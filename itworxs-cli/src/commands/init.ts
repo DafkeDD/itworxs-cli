@@ -2,20 +2,23 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATES_DIR = path.resolve(__dirname, '../../templates');
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+// dist/cli.js -> ../templates (templates staat naast dist in de package root)
+const TEMPLATES_DIR = path.resolve(moduleDir, '../templates');
 
 // npm laat .gitignore-bestanden niet toe in packages, daarom heten ze in
 // templates/ zonder punt en hernoemen we ze bij het kopieren.
-const RENAME_MAP = {
+const RENAME_MAP: Record<string, string> = {
   gitignore: '.gitignore',
 };
 
-/**
- * Scaffold de huidige map met een basis projectstructuur.
- * @param {{ force?: boolean, cwd?: string }} options
- */
-export async function runInit({ force = false, cwd = process.cwd() } = {}) {
+export interface InitOptions {
+  force?: boolean;
+  cwd?: string;
+}
+
+/** Scaffold de huidige map met een basis projectstructuur. */
+export async function runInit({ force = false, cwd = process.cwd() }: InitOptions = {}): Promise<void> {
   const projectName = path.basename(cwd);
   console.log(`\nProject initialiseren in: ${cwd}`);
 
@@ -52,8 +55,8 @@ export async function runInit({ force = false, cwd = process.cwd() } = {}) {
   console.log(`\nKlaar. ${created} bestand(en) aangemaakt, ${skipped} overgeslagen.\n`);
 }
 
-async function collectTemplateFiles(dir, base = dir) {
-  const out = [];
+async function collectTemplateFiles(dir: string, base: string = dir): Promise<string[]> {
+  const out: string[] = [];
   let entries;
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
@@ -71,7 +74,7 @@ async function collectTemplateFiles(dir, base = dir) {
   return out;
 }
 
-async function pathExists(p) {
+async function pathExists(p: string): Promise<boolean> {
   try {
     await fs.access(p);
     return true;

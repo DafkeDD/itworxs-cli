@@ -1,0 +1,34 @@
+{
+  "name": "itworxs-cli",
+  "version": "0.1.0",
+  "description": "Basis CLI voor ItWorXs projecten",
+  "type": "module",
+  "bin": {
+    "itworxs": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "prepare": "tsup"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "cli",
+    "itworxs"
+  ],
+  "author": "ItWorXs",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  }
+}

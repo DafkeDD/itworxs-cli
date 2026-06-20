@@ -1,5 +1,8 @@
-node_modules/
-dist/
+# dependencies en build-output van de CLI
+itworxs-cli/node_modules/
+itworxs-cli/dist/
+
+# algemeen
 .env
 *.log
 .DS_Store

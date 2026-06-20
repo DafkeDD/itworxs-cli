@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-import { runInit } from '../src/commands/init.js';
+import { runInit } from './commands/init';
 
 const VERSION = '0.1.0';
 
@@ -24,26 +23,17 @@ Voorbeelden:
   itworxs init --force
 `;
 
-function main() {
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const command = args[0];
   const flags = args.slice(1);
-
-  if (!command || command === 'help' || flags.includes('-h') || flags.includes('--help')) {
-    if (command === 'init') {
-      // val door naar init met --help afgehandeld daar
-    } else {
-      console.log(HELP);
-      return;
-    }
-  }
 
   if (command === '-v' || command === '--version' || command === 'version') {
     console.log(VERSION);
     return;
   }
 
-  if (command === '-h' || command === '--help') {
+  if (!command || command === 'help' || command === '-h' || command === '--help') {
     console.log(HELP);
     return;
   }
@@ -51,7 +41,7 @@ function main() {
   switch (command) {
     case 'init': {
       const force = flags.includes('-f') || flags.includes('--force');
-      runInit({ force, cwd: process.cwd() });
+      await runInit({ force, cwd: process.cwd() });
       break;
     }
     default:
