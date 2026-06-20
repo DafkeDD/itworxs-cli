@@ -184,13 +184,17 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
     type: 'module',
     main: 'dist/index.js',
     scripts: {
-      dev: 'tsx watch src/index.ts',
+      dev: 'nodemon',
       build: 'tsc',
       start: 'node dist/index.js',
       format: 'prettier --write .',
     },
   };
   await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  await fs.writeFile(
+    path.join(dir, 'nodemon.json'),
+    JSON.stringify({ watch: ['src'], ext: 'ts,json', exec: 'tsx src/index.ts' }, null, 2) + '\n',
+  );
   await fs.writeFile(path.join(dir, 'tsconfig.json'), TSCONFIG_BACKEND);
   await fs.writeFile(path.join(dir, 'src', 'index.ts'), EXPRESS_SERVER_TS);
   await fs.writeFile(path.join(dir, '.prettierrc'), PRETTIERRC_BACKEND);
@@ -205,7 +209,7 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
   if ((await runInShell('npm install express pg pino dotenv node-cron cors --no-audit --no-fund', dir)) !== 0) return false;
   return (
     (await runInShell(
-      'npm install -D typescript tsx @types/express @types/node @types/pg @types/node-cron @types/cors prettier --no-audit --no-fund',
+      'npm install -D typescript tsx nodemon @types/express @types/node @types/pg @types/node-cron @types/cors prettier --no-audit --no-fund',
       dir,
     )) === 0
   );
