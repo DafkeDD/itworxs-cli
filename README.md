@@ -38,8 +38,13 @@ bevestiging — het draait meteen):
 
 | Keuze | Resultaat |
 |-------|-----------|
-| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript) + Prettier (met `prettier-plugin-tailwindcss`) |
+| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript), **next-intl** (i18n, App Router) + Prettier (met `prettier-plugin-tailwindcss`) |
 | **Node.js + Express** | map `backend/` met een **TypeScript** Express-server (`tsx` + `tsc`) + Prettier |
+
+De Next.js-frontend wordt meteen meertalig opgezet met **next-intl**: een
+`[locale]/` route, `src/i18n/` config, een `proxy.ts`, message-bestanden in
+`src/messages/` (en/nl/fr) en een `LocaleSwitcher`. De talen pas je aan in
+`src/i18n/routing.ts`.
 
 ```
 mijn-project/

@@ -4,8 +4,6 @@ import { spawn } from 'node:child_process';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 
-// Map waarin de CLI per project geinstalleerd kan zijn. Draai je 'init' vanuit
-// die map, dan komen frontend/ en backend/ in de map erboven (de projectroot).
 const INSTALL_DIR_NAME = 'itworxs-cli';
 
 interface Choice {
@@ -15,7 +13,7 @@ interface Choice {
 }
 
 const FRONTENDS: Choice[] = [
-  { value: 'nextjs', label: 'Next.js', hint: 'met TailwindCSS, laatste versie' },
+  { value: 'nextjs', label: 'Next.js', hint: 'TypeScript, TailwindCSS, next-intl, Prettier' },
   { value: 'none', label: 'Geen', hint: 'geen frontend' },
 ];
 
@@ -54,7 +52,7 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
 
   if (dryRun) {
     if (frontendChoice === 'nextjs') {
-      p.note(`map: ${path.join(projectRoot, 'frontend')}\nNext.js + TailwindCSS + Prettier (laatste versies)`, 'Frontend');
+      p.note(`map: ${path.join(projectRoot, 'frontend')}\nNext.js + TailwindCSS + next-intl (i18n) + Prettier`, 'Frontend');
     }
     if (backendChoice === 'node-express') {
       p.note(`map: ${path.join(projectRoot, 'backend')}\nNode.js + Express in TypeScript + Prettier`, 'Backend');
@@ -67,7 +65,7 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
   let failed = false;
 
   if (frontendChoice === 'nextjs') {
-    (await setupNextjs(projectRoot)) ? done.push('frontend/ (Next.js + Tailwind + Prettier)') : (failed = true);
+    (await setupNextjs(projectRoot)) ? done.push('frontend/ (Next.js + Tailwind + next-intl + Prettier)') : (failed = true);
   }
   if (!failed && backendChoice === 'node-express') {
     (await setupNodeExpress(projectRoot)) ? done.push('backend/ (Express + TypeScript + Prettier)') : (failed = true);
@@ -106,10 +104,45 @@ async function setupNextjs(projectRoot: string): Promise<boolean> {
     '--ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes';
   if ((await runInShell(command, projectRoot)) !== 0) return false;
 
+  if (!(await setupNextIntl(dir))) return false;
+
   p.log.step('Prettier toevoegen aan frontend/ ...');
   await fs.writeFile(path.join(dir, '.prettierrc'), PRETTIERRC_FRONTEND);
   await addFormatScript(dir);
   return (await runInShell('npm install -D prettier prettier-plugin-tailwindcss --no-audit --no-fund', dir)) === 0;
+}
+
+/** next-intl (i18n) opzetten volgens de App Router setup. */
+async function setupNextIntl(dir: string): Promise<boolean> {
+  p.log.step('next-intl (i18n) toevoegen aan frontend/ ...');
+  const src = path.join(dir, 'src');
+
+  await fs.writeFile(path.join(dir, 'next.config.ts'), NEXT_CONFIG_TS);
+
+  await fs.mkdir(path.join(src, 'i18n'), { recursive: true });
+  await fs.writeFile(path.join(src, 'i18n', 'routing.ts'), ROUTING_TS);
+  await fs.writeFile(path.join(src, 'i18n', 'navigation.ts'), NAVIGATION_TS);
+  await fs.writeFile(path.join(src, 'i18n', 'request.ts'), REQUEST_TS);
+  await fs.writeFile(path.join(src, 'proxy.ts'), PROXY_TS);
+
+  await fs.mkdir(path.join(src, 'messages'), { recursive: true });
+  await fs.writeFile(path.join(src, 'messages', 'en.json'), MESSAGES_EN);
+  await fs.writeFile(path.join(src, 'messages', 'nl.json'), MESSAGES_NL);
+  await fs.writeFile(path.join(src, 'messages', 'fr.json'), MESSAGES_FR);
+
+  const localeDir = path.join(src, 'app', '[locale]');
+  await fs.mkdir(localeDir, { recursive: true });
+  await fs.writeFile(path.join(localeDir, 'layout.tsx'), LOCALE_LAYOUT_TSX);
+  await fs.writeFile(path.join(localeDir, 'page.tsx'), LOCALE_PAGE_TSX);
+
+  await fs.mkdir(path.join(src, 'components'), { recursive: true });
+  await fs.writeFile(path.join(src, 'components', 'LocaleSwitcher.tsx'), LOCALE_SWITCHER_TSX);
+
+  // standaard root-app bestanden weghalen (vervangen door [locale]/)
+  await fs.rm(path.join(src, 'app', 'page.tsx'), { force: true });
+  await fs.rm(path.join(src, 'app', 'layout.tsx'), { force: true });
+
+  return (await runInShell('npm install next-intl --no-audit --no-fund', dir)) === 0;
 }
 
 // --- Node.js + Express (TypeScript) --------------------------------------
@@ -151,7 +184,7 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
   );
 }
 
-// --- templates ------------------------------------------------------------
+// --- templates: backend ---------------------------------------------------
 
 const EXPRESS_SERVER_TS = `import express from 'express'
 import type { Request, Response } from 'express'
@@ -186,7 +219,176 @@ const TSCONFIG_BACKEND = `{
 }
 `;
 
-// Jouw Prettier-config. Frontend incl. de tailwind-plugin, backend zonder.
+// --- templates: next-intl -------------------------------------------------
+
+const NEXT_CONFIG_TS = `import type { NextConfig } from 'next'
+import createNextIntlPlugin from 'next-intl/plugin'
+
+const nextConfig: NextConfig = {}
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+export default withNextIntl(nextConfig)
+`;
+
+const ROUTING_TS = `import { defineRouting } from 'next-intl/routing'
+
+// Pas hier de ondersteunde talen aan.
+export const routing = defineRouting({
+    locales: ['en', 'nl', 'fr'],
+    defaultLocale: 'en'
+})
+`;
+
+const NAVIGATION_TS = `import { createNavigation } from 'next-intl/navigation'
+import { routing } from './routing'
+
+export const { Link, redirect, usePathname, useRouter, getPathname } =
+    createNavigation(routing)
+`;
+
+const REQUEST_TS = `import { getRequestConfig } from 'next-intl/server'
+import { hasLocale } from 'next-intl'
+import { routing } from './routing'
+
+export default getRequestConfig(async ({ requestLocale }) => {
+    const requested = await requestLocale
+    const locale = hasLocale(routing.locales, requested)
+        ? requested
+        : routing.defaultLocale
+
+    return {
+        locale,
+        messages: (await import(\`../messages/\${locale}.json\`)).default
+    }
+})
+`;
+
+const PROXY_TS = `import createMiddleware from 'next-intl/middleware'
+import { routing } from './i18n/routing'
+
+export default createMiddleware(routing)
+
+export const config = {
+    matcher: '/((?!api|trpc|_next|_vercel|.*\\\\..*).*)'
+}
+`;
+
+const MESSAGES_EN = `{
+    "home": {
+        "title": "Welcome to ItWorXs!",
+        "welcomeMessage": "A multilingual Next.js app, ready to go."
+    }
+}
+`;
+
+const MESSAGES_NL = `{
+    "home": {
+        "title": "Welkom bij ItWorXs!",
+        "welcomeMessage": "Een meertalige Next.js-app, klaar voor gebruik."
+    }
+}
+`;
+
+const MESSAGES_FR = `{
+    "home": {
+        "title": "Bienvenue chez ItWorXs!",
+        "welcomeMessage": "Une application Next.js multilingue, prete a l'emploi."
+    }
+}
+`;
+
+const LOCALE_LAYOUT_TSX = `import { NextIntlClientProvider, hasLocale } from 'next-intl'
+import { notFound } from 'next/navigation'
+import { routing } from '@/i18n/routing'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
+import '../globals.css'
+
+export function generateStaticParams() {
+    return routing.locales.map(locale => ({ locale }))
+}
+
+export default async function LocaleLayout({
+    children,
+    params
+}: {
+    children: React.ReactNode
+    params: Promise<{ locale: string }>
+}) {
+    const { locale } = await params
+    if (!hasLocale(routing.locales, locale)) {
+        notFound()
+    }
+
+    return (
+        <html lang={locale}>
+            <body>
+                <NextIntlClientProvider>
+                    <LocaleSwitcher />
+                    {children}
+                </NextIntlClientProvider>
+            </body>
+        </html>
+    )
+}
+`;
+
+const LOCALE_PAGE_TSX = `import { useTranslations } from 'next-intl'
+import { setRequestLocale } from 'next-intl/server'
+import { use } from 'react'
+
+export default function HomePage({
+    params
+}: {
+    params: Promise<{ locale: string }>
+}) {
+    const { locale } = use(params)
+    setRequestLocale(locale)
+
+    const t = useTranslations('home')
+
+    return (
+        <main className="p-8">
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
+            <p>{t('welcomeMessage')}</p>
+        </main>
+    )
+}
+`;
+
+const LOCALE_SWITCHER_TSX = `'use client'
+
+import { usePathname, useRouter } from '@/i18n/navigation'
+import { useLocale } from 'next-intl'
+import { routing } from '@/i18n/routing'
+
+export default function LocaleSwitcher() {
+    const locale = useLocale()
+    const router = useRouter()
+    const pathname = usePathname()
+
+    const switchLocale = (newLocale: string) => {
+        if (newLocale !== locale) {
+            router.replace(pathname, { locale: newLocale })
+            router.refresh()
+        }
+    }
+
+    return (
+        <select
+            value={locale}
+            onChange={e => switchLocale(e.target.value)}>
+            {routing.locales.map(loc => (
+                <option key={loc} value={loc}>
+                    {loc.toUpperCase()}
+                </option>
+            ))}
+        </select>
+    )
+}
+`;
+
+// --- templates: prettier --------------------------------------------------
+
 const PRETTIERRC_FRONTEND = `{
     "arrowParens": "avoid",
     "singleQuote": true,
@@ -213,7 +415,6 @@ const PRETTIERRC_BACKEND = `{
 
 // --- helpers --------------------------------------------------------------
 
-/** Voeg een 'format'-script toe aan een bestaande package.json (niet kritisch). */
 async function addFormatScript(dir: string): Promise<void> {
   const pkgPath = path.join(dir, 'package.json');
   try {
@@ -225,7 +426,6 @@ async function addFormatScript(dir: string): Promise<void> {
   }
 }
 
-// npm-omgeving die de ruis stilzet (audit, funding, warnings) en telemetry uitschakelt.
 function quietEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
