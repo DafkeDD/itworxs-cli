@@ -5,9 +5,8 @@ Wordt **per project** geïnstalleerd (niet globaal).
 
 ## Installeren in een project
 
-Om de projectroot schoon te houden, installeer je de CLI in een eigen submap
-`itworxs-cli/`. Daar belanden `node_modules` en de `package*.json` — niet in de
-root van je project.
+Installeer de CLI in een eigen submap `itworxs-cli/` zodat de projectroot schoon
+blijft (`node_modules` en `package*.json` komen in die submap, niet in de root).
 
 ```bash
 # vanuit de root van je project
@@ -29,15 +28,50 @@ Pop-Location
 
 ## Gebruik
 
+Draai de commands vanuit de `itworxs-cli` map:
+
 ```bash
 cd itworxs-cli
+npx itworxs init       # zet een frontend op (vraagt welke je wil)
 npx itworxs help       # toon hulp
 npx itworxs version    # toon versie
-npx itworxs init       # initialiseer het project
 ```
 
-Op dit moment is `init` een lege stub: het bevestigt enkel de initialisatie en
-raakt nog geen bestanden aan. Vul je eigen logica in via `src/commands/init.ts`.
+### `init`
+
+`init` vraagt welke frontend je wil gebruiken en zet die op:
+
+```
+Welke frontend wil je gebruiken?
+
+  1) Next.js + TailwindCSS (laatste versie)
+
+Keuze [1]:
+```
+
+Bij keuze 1 draait de CLI `create-next-app@latest` (dus altijd de nieuwste
+Next.js + TailwindCSS) en installeert die in een map **`frontend/`** in je
+projectroot:
+
+```
+mijn-project/
+  itworxs-cli/     # de CLI-install
+  frontend/        # de Next.js + Tailwind app
+```
+
+> Draai je `init` vanuit de `itworxs-cli` map, dan komt `frontend/` in de map
+> erboven (de projectroot). Draai je het ergens anders, dan in de huidige map.
+
+Opties:
+
+- `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
+
+Daarna start je de frontend met:
+
+```bash
+cd frontend
+npm run dev
+```
 
 ## Ontwikkelen aan de CLI zelf
 
@@ -56,7 +90,7 @@ node dist/cli.js help  # lokaal draaien
 
 ```
 src/cli.ts             # entrypoint (argument parsing)
-src/commands/init.ts   # init command (nu nog een stub)
+src/commands/init.ts   # init command (frontend-prompt + install)
 dist/                  # build-output (gegenereerd, niet in git)
 tsup.config.ts         # bundler-config
 tsconfig.json          # TypeScript-config

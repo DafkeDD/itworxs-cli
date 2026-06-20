@@ -1,19 +1,20 @@
 import { runInit } from './commands/init';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
 Gebruik:
-  itworxs <command>
+  itworxs <command> [opties]
 
 Commands:
-  init       Initialiseer het project
+  init       Zet een frontend op (vraagt welke je wil)
   help       Toon deze hulp
   version    Toon de versie
 
 Opties:
+  --dry-run       Toon bij 'init' enkel het commando, voer niets uit
   -h, --help      Toon hulp
   -v, --version   Toon de versie
 `;
@@ -21,6 +22,7 @@ Opties:
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const command = args[0];
+  const flags = args.slice(1);
 
   if (command === '-v' || command === '--version' || command === 'version') {
     console.log(VERSION);
@@ -33,9 +35,11 @@ async function main(): Promise<void> {
   }
 
   switch (command) {
-    case 'init':
-      await runInit({ cwd: process.cwd() });
+    case 'init': {
+      const dryRun = flags.includes('--dry-run');
+      await runInit({ dryRun });
       break;
+    }
     default:
       console.error(`Onbekend command: ${command}\n`);
       console.log(HELP);
