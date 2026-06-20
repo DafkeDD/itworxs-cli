@@ -1,6 +1,6 @@
 {
   "name": "itworxs-cli",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "Basis CLI voor ItWorXs projecten",
   "type": "module",
   "bin": {

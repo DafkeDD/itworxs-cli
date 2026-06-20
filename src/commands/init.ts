@@ -221,7 +221,6 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
 const EXPRESS_SERVER_TS = `import express from 'express'
 import type { Request, Response } from 'express'
 import cors from 'cors'
-import cron from 'node-cron'
 import pool from './config/db.js'
 import { env } from './config/env.js'
 import { logger } from './services/logger.js'
@@ -249,11 +248,6 @@ app.get('/health', async (_req: Request, res: Response) => {
         logger.error({ err }, 'Database health check mislukt')
         res.status(500).json({ status: 'error', db: 'down' })
     }
-})
-
-// Voorbeeld cron-taak (elke minuut). Pas aan of verwijder.
-cron.schedule('* * * * *', () => {
-    logger.debug('Cron-taak draait')
 })
 
 app.listen(env.PORT, () => {
