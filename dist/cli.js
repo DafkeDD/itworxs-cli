@@ -152,6 +152,7 @@ async function setupNodeExpress(projectRoot) {
   await fs.writeFile(path.join(dir, ".gitignore"), "node_modules/\ndist/\n.env\n");
   await fs.writeFile(path.join(dir, "src", "config", "db.ts"), DB_TS);
   await fs.writeFile(path.join(dir, "src", "config", "env.ts"), ENV_TS);
+  await fs.writeFile(path.join(dir, "src", "config", "locale.ts"), LOCALE_TS);
   await fs.writeFile(path.join(dir, "src", "services", "logger.ts"), LOGGER_TS);
   await fs.writeFile(path.join(dir, ".env.example"), ENV_EXAMPLE);
   if (await runInShell("npm install express pg pino dotenv node-cron cors --no-audit --no-fund", dir) !== 0) return false;
@@ -275,6 +276,21 @@ import { env } from '../config/env.js'
 export const logger = pino({
     level: env.LOG_LEVEL
 })
+`;
+var LOCALE_TS = `// Single source of truth voor app-talen. Frontend i18n (next-intl) en backend mail-templating
+// moeten dezelfde lijst respecteren - wijziging hier vereist sync met frontend/messages/.
+export const SUPPORTED_LOCALES = ['en', 'nl', 'fr', 'de'] as const
+
+export type Locale = (typeof SUPPORTED_LOCALES)[number]
+
+export const DEFAULT_LOCALE: Locale = 'en'
+
+export const parseLocale = (input: unknown): Locale => {
+    if (typeof input !== 'string') return DEFAULT_LOCALE
+    return (SUPPORTED_LOCALES as readonly string[]).includes(input)
+        ? (input as Locale)
+        : DEFAULT_LOCALE
+}
 `;
 var ENV_EXAMPLE = `# NODE_ENV - development | production | test (default: development)
 NODE_ENV=development
@@ -691,7 +707,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.8.4";
+var VERSION = "0.8.5";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
