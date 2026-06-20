@@ -105,6 +105,7 @@ async function setupNextjs(projectRoot: string): Promise<boolean> {
   if ((await runInShell(command, projectRoot)) !== 0) return false;
 
   if (!(await setupNextIntl(dir))) return false;
+  if (!(await setupTheme(dir))) return false;
 
   p.log.step('Prettier toevoegen aan frontend/ ...');
   await fs.writeFile(path.join(dir, '.prettierrc'), PRETTIERRC_FRONTEND);
@@ -144,6 +145,21 @@ async function setupNextIntl(dir: string): Promise<boolean> {
   await fs.rm(path.join(src, 'app', 'layout.tsx'), { force: true });
 
   return (await runInShell('npm install next-intl --no-audit --no-fund', dir)) === 0;
+}
+
+/** Dark/light/system mode via next-themes. */
+async function setupTheme(dir: string): Promise<boolean> {
+  p.log.step('Dark/light/system thema toevoegen aan frontend/ ...');
+  const src = path.join(dir, 'src');
+  await fs.mkdir(path.join(src, 'components'), { recursive: true });
+  await fs.writeFile(path.join(src, 'components', 'ThemeProvider.tsx'), THEME_PROVIDER_TSX);
+  await fs.writeFile(path.join(src, 'components', 'ThemeSwitcher.tsx'), THEME_SWITCHER_TSX);
+  // Tailwind v4: class-gebaseerde dark mode (next-themes zet de .dark class)
+  await fs.appendFile(
+    path.join(src, 'app', 'globals.css'),
+    '\n/* dark mode via class (next-themes) */\n@custom-variant dark (&:where(.dark, .dark *));\n',
+  );
+  return (await runInShell('npm install next-themes --no-audit --no-fund', dir)) === 0;
 }
 
 // --- Node.js + Express (TypeScript) --------------------------------------
@@ -309,6 +325,8 @@ const MESSAGES_DE = `{
 const LOCALE_LAYOUT_TSX = `import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
+import ThemeProvider from '@/components/ThemeProvider'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import '../globals.css'
 
@@ -329,12 +347,17 @@ export default async function LocaleLayout({
     }
 
     return (
-        <html lang={locale}>
-            <body>
-                <NextIntlClientProvider>
-                    <LocaleSwitcher />
-                    {children}
-                </NextIntlClientProvider>
+        <html lang={locale} suppressHydrationWarning>
+            <body className="bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+                <ThemeProvider>
+                    <NextIntlClientProvider>
+                        <header className="flex justify-end gap-2 p-4">
+                            <LocaleSwitcher />
+                            <ThemeSwitcher />
+                        </header>
+                        {children}
+                    </NextIntlClientProvider>
+                </ThemeProvider>
             </body>
         </html>
     )
@@ -391,6 +414,49 @@ export default function LocaleSwitcher() {
                     {loc.toUpperCase()}
                 </option>
             ))}
+        </select>
+    )
+}
+`;
+
+const THEME_PROVIDER_TSX = `'use client'
+
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
+import type { ReactNode } from 'react'
+
+export default function ThemeProvider({ children }: { children: ReactNode }) {
+    return (
+        <NextThemesProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange>
+            {children}
+        </NextThemesProvider>
+    )
+}
+`;
+
+const THEME_SWITCHER_TSX = `'use client'
+
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
+
+export default function ThemeSwitcher() {
+    const { theme, setTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => setMounted(true), [])
+    if (!mounted) return null
+
+    return (
+        <select
+            value={theme}
+            onChange={e => setTheme(e.target.value)}
+            aria-label="Thema">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
         </select>
     )
 }

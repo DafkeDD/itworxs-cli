@@ -38,13 +38,17 @@ bevestiging — het draait meteen):
 
 | Keuze | Resultaat |
 |-------|-----------|
-| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript), **next-intl** (i18n, App Router) + Prettier (met `prettier-plugin-tailwindcss`) |
+| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript), **next-intl** (i18n: en/nl/fr/de), **dark/light/system** thema (`next-themes`) + Prettier |
 | **Node.js + Express** | map `backend/` met een **TypeScript** Express-server (`tsx` + `tsc`) + Prettier |
 
 De Next.js-frontend wordt meteen meertalig opgezet met **next-intl**: een
 `[locale]/` route, `src/i18n/` config, een `proxy.ts`, message-bestanden in
 `src/messages/` (en/nl/fr) en een `LocaleSwitcher`. De talen pas je aan in
 `src/i18n/routing.ts`.
+
+Thema-modus (light/dark/system) zit standaard mee via `next-themes`: een
+`ThemeProvider`, een `ThemeSwitcher` in de header, en class-based dark mode in
+Tailwind. Het systeem-thema volgt automatisch de OS-voorkeur.
 
 ```
 mijn-project/
