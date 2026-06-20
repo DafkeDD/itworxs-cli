@@ -146,9 +146,13 @@ async function setupNodeExpress(projectRoot) {
   await fs.writeFile(path.join(dir, "src", "index.ts"), EXPRESS_SERVER_TS);
   await fs.writeFile(path.join(dir, ".prettierrc"), PRETTIERRC_BACKEND);
   await fs.writeFile(path.join(dir, ".gitignore"), "node_modules/\ndist/\n.env\n");
-  if (await runInShell("npm install express --no-audit --no-fund", dir) !== 0) return false;
+  await fs.writeFile(path.join(dir, "src", "config", "db.ts"), DB_TS);
+  await fs.writeFile(path.join(dir, "src", "config", "env.ts"), ENV_TS);
+  await fs.writeFile(path.join(dir, "src", "services", "logger.ts"), LOGGER_TS);
+  await fs.writeFile(path.join(dir, ".env.example"), ENV_EXAMPLE);
+  if (await runInShell("npm install express pg pino dotenv --no-audit --no-fund", dir) !== 0) return false;
   return await runInShell(
-    "npm install -D typescript tsx @types/express @types/node prettier --no-audit --no-fund",
+    "npm install -D typescript tsx @types/express @types/node @types/pg prettier --no-audit --no-fund",
     dir
   ) === 0;
 }
@@ -182,6 +186,125 @@ var TSCONFIG_BACKEND = `{
   },
   "include": ["src"]
 }
+`;
+var DB_TS = `import pkg from 'pg'
+const { Pool } = pkg
+import { env } from './env.js'
+import { logger } from '../services/logger.js'
+
+const pool = new Pool({
+    user: env.DB_USER,
+    host: env.DB_HOST,
+    database: env.DB_DATABASE,
+    password: env.DB_PASSWORD,
+    port: env.DB_PORT
+})
+
+pool.on('connect', () => {
+    logger.info('Connected to the database')
+})
+
+pool.on('error', (err: Error) => {
+    logger.error({ err }, 'Unexpected error on idle pg client')
+})
+
+export default pool
+`;
+var ENV_TS = `import 'dotenv/config'
+
+function required(name: string, fallback?: string): string {
+    const value = process.env[name] ?? fallback
+    if (value === undefined) {
+        throw new Error('Ontbrekende environment variabele: ' + name)
+    }
+    return value
+}
+
+export const env = {
+    NODE_ENV: process.env.NODE_ENV ?? 'development',
+    PORT: Number(process.env.PORT ?? 5000),
+    LOG_LEVEL:
+        process.env.LOG_LEVEL ??
+        (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+    DB_HOST: required('DB_HOST', 'localhost'),
+    DB_USER: required('DB_USER', 'postgres'),
+    DB_PASSWORD: required('DB_PASSWORD', 'password'),
+    DB_DATABASE: required('DB_DATABASE', 'projectx'),
+    DB_PORT: Number(process.env.DB_PORT ?? 5432)
+}
+`;
+var LOGGER_TS = `import pino from 'pino'
+import { env } from '../config/env.js'
+
+export const logger = pino({
+    level: env.LOG_LEVEL
+})
+`;
+var ENV_EXAMPLE = `# NODE_ENV - development | production | test (default: development)
+NODE_ENV=development
+
+# Port Settings
+PORT=5000
+
+# JWT - minstens 32 willekeurige bytes (genereer met: openssl rand -hex 32)
+JWT_SECRET=
+
+# Logger - pino-niveau. Default: 'debug' in dev, 'info' in productie.
+# Toegestaan: trace | debug | info | warn | error | fatal | silent
+LOG_LEVEL=
+
+# Eenmalige bootstrap: bij elke startup wordt deze user gepromoot tot 'admin'
+# als ze nog 'user' is. Verwijder de waarde nadat de admin is aangemaakt.
+BOOTSTRAP_ADMIN_EMAIL=
+
+# Database Settings
+DB_HOST=localhost
+DB_USER=postgres
+DB_PASSWORD=password
+DB_DATABASE=projectx
+DB_PORT=5432
+
+# SMTP Settings
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM="ProjectX <noreply@projectx.local>"
+# Optioneel: TLS servername-override voor SNI mismatch tussen DNS en cert.
+SMTP_TLS_SERVERNAME=
+# Optioneel: zet op 'false' om self-signed certs te accepteren (alleen dev).
+SMTP_TLS_REJECT_UNAUTHORIZED=
+# Optioneel: forceer IPv4 (4) of IPv6 (6) bij DNS-resolve van SMTP_HOST.
+SMTP_FAMILY=
+APP_NAME=ProjectX
+
+# Frontend - STRIKT VEREIST: gebruikt voor OAuth-redirects en CORS-whitelist (geen wildcard).
+FRONTEND_URL=http://localhost:3000
+
+# Trust-proxy: zet op 'true' achter reverse-proxy/load-balancer (Cloudflare, nginx, ALB).
+# Maakt req.ip de echte client-IP i.p.v. de proxy-IP - essentieel voor rate-limiting.
+TRUST_PROXY=false
+
+# OAuth - backend base waarop de provider terugkomt
+OAUTH_REDIRECT_BASE=http://localhost:5000
+
+# Google OAuth
+OAUTH_GOOGLE_CLIENT_ID=
+OAUTH_GOOGLE_CLIENT_SECRET=
+
+# Microsoft (consumer-tenant: persoonlijke MS-accounts)
+OAUTH_MICROSOFT_CLIENT_ID=
+OAUTH_MICROSOFT_CLIENT_SECRET=
+
+# Azure AD / Entra ID (work / school)
+OAUTH_AZURE_CLIENT_ID=
+OAUTH_AZURE_CLIENT_SECRET=
+OAUTH_AZURE_TENANT=organizations
+
+# GitHub (laat leeg om uit te schakelen)
+OAUTH_GITHUB_CLIENT_ID=
+OAUTH_GITHUB_CLIENT_SECRET=
 `;
 var NEXT_CONFIG_TS = `import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
@@ -532,7 +655,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.7.2";
+var VERSION = "0.8.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

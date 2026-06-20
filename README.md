@@ -39,7 +39,7 @@ bevestiging — het draait meteen):
 | Keuze | Resultaat |
 |-------|-----------|
 | **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript), **next-intl** (i18n: en/nl/fr/de), **dark/light/system** thema (custom, `data-theme`) + Prettier |
-| **Node.js + Express** | map `backend/` met een **TypeScript** Express-server (`tsx` + `tsc`) + Prettier |
+| **Node.js + Express** | map `backend/` met een **TypeScript** Express-server (`tsx` + `tsc`), **PostgreSQL** (`pg`) in `config/db.ts`, `config/env.ts`, `services/logger.ts` (pino), `.env.example` + Prettier. `src/` bevat: config, controllers, data, middleware, modals, routes, services |
 
 De Next.js-frontend wordt meteen meertalig opgezet met **next-intl**: een
 `[locale]/` route, `src/i18n/` config, een `proxy.ts`, message-bestanden in
