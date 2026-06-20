@@ -113,11 +113,8 @@ async function setupTheme(dir) {
   await fs.mkdir(path.join(src, "components"), { recursive: true });
   await fs.writeFile(path.join(src, "components", "ThemeProvider.tsx"), THEME_PROVIDER_TSX);
   await fs.writeFile(path.join(src, "components", "ThemeSwitcher.tsx"), THEME_SWITCHER_TSX);
-  await fs.appendFile(
-    path.join(src, "app", "globals.css"),
-    "\n/* dark mode via class (next-themes) */\n@custom-variant dark (&:where(.dark, .dark *));\n"
-  );
-  return await runInShell("npm install next-themes --no-audit --no-fund", dir) === 0;
+  await fs.writeFile(path.join(src, "app", "globals.css"), GLOBALS_CSS);
+  return true;
 }
 async function setupNodeExpress(projectRoot) {
   const dir = path.join(projectRoot, "backend");
@@ -259,10 +256,13 @@ var MESSAGES_DE = `{
 var LOCALE_LAYOUT_TSX = `import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
-import ThemeProvider from '@/components/ThemeProvider'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import '../globals.css'
+
+const themeScript =
+    "(function(){try{var t=localStorage.getItem('itworxs-theme')||'system';var d=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',d)}catch(e){}})()"
 
 export function generateStaticParams() {
     return routing.locales.map(locale => ({ locale }))
@@ -282,7 +282,10 @@ export default async function LocaleLayout({
 
     return (
         <html lang={locale} suppressHydrationWarning>
-            <body className="bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+            <head>
+                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+            </head>
+            <body>
                 <ThemeProvider>
                     <NextIntlClientProvider>
                         <header className="flex justify-end gap-2 p-4">
@@ -350,39 +353,110 @@ export default function LocaleSwitcher() {
     )
 }
 `;
+var GLOBALS_CSS = `@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="light"] {
+    --bg: #ffffff;
+    --surface: #f7f8fa;
+    --text: #0f1729;
+    --text-2: #475063;
+    --border: #e7e9ee;
+    --accent: #0d9488;
+}
+
+[data-theme="dark"] {
+    --bg: #0a0c10;
+    --surface: #14171d;
+    --text: #e6e9ef;
+    --text-2: #9aa3b2;
+    --border: #262b34;
+    --accent: #2dd4bf;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+}
+`;
 var THEME_PROVIDER_TSX = `'use client'
 
-import { ThemeProvider as NextThemesProvider } from 'next-themes'
-import type { ReactNode } from 'react'
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+    type ReactNode
+} from 'react'
 
-export default function ThemeProvider({ children }: { children: ReactNode }) {
-    return (
-        <NextThemesProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange>
-            {children}
-        </NextThemesProvider>
-    )
+type Theme = 'light' | 'dark' | 'system'
+
+interface ThemeCtx {
+    theme: Theme
+    setTheme: (t: Theme) => void
+}
+
+const Ctx = createContext<ThemeCtx | null>(null)
+const STORAGE_KEY = 'itworxs-theme'
+
+function resolve(theme: Theme): 'light' | 'dark' {
+    if (theme !== 'system') return theme
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+}
+
+function apply(theme: Theme) {
+    document.documentElement.setAttribute('data-theme', resolve(theme))
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+    const [theme, setThemeState] = useState<Theme>('system')
+
+    useEffect(() => {
+        const saved = (localStorage.getItem(STORAGE_KEY) as Theme) || 'system'
+        setThemeState(saved)
+        apply(saved)
+    }, [])
+
+    useEffect(() => {
+        if (theme !== 'system') return
+        const mq = window.matchMedia('(prefers-color-scheme: dark)')
+        const onChange = () => apply('system')
+        mq.addEventListener('change', onChange)
+        return () => mq.removeEventListener('change', onChange)
+    }, [theme])
+
+    const setTheme = useCallback((t: Theme) => {
+        setThemeState(t)
+        localStorage.setItem(STORAGE_KEY, t)
+        apply(t)
+    }, [])
+
+    return <Ctx.Provider value={{ theme, setTheme }}>{children}</Ctx.Provider>
+}
+
+export function useThemeMode() {
+    const ctx = useContext(Ctx)
+    if (!ctx) throw new Error('useThemeMode must be used within ThemeProvider')
+    return ctx
 }
 `;
 var THEME_SWITCHER_TSX = `'use client'
 
-import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useThemeMode } from './ThemeProvider'
+
+type Theme = 'light' | 'dark' | 'system'
 
 export default function ThemeSwitcher() {
-    const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => setMounted(true), [])
-    if (!mounted) return null
-
+    const { theme, setTheme } = useThemeMode()
     return (
         <select
             value={theme}
-            onChange={e => setTheme(e.target.value)}
+            onChange={e => setTheme(e.target.value as Theme)}
             aria-label="Thema">
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -453,7 +527,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.7.0";
+var VERSION = "0.7.1";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
