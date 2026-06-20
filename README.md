@@ -18,34 +18,46 @@ er komt geen `node_modules` of `package.json` van de CLI in te staan.
 
 ### `init`
 
-`init` start een interactieve wizard en vraagt welke frontend je wil:
+`init` start een interactieve wizard met twee vragen: **frontend** en **backend**.
 
 ```
 ┌   itworxs  project setup
 │
 ◆  Welke frontend wil je gebruiken?
 │  ● Next.js   met TailwindCSS, laatste versie
+│  ○ Geen
+│
+◆  Welke backend wil je gebruiken?
+│  ● Node.js + Express   basis API-server
+│  ○ Geen
 └
 ```
 
-Bij **Next.js** maakt de CLI een map **`frontend/`** in je projectroot en draait
-daarin `create-next-app@latest` (dus altijd de nieuwste Next.js + TailwindCSS):
+Op basis van je keuzes zet de CLI dit op in je projectroot (geen extra
+bevestiging — het draait meteen):
+
+| Keuze | Resultaat |
+|-------|-----------|
+| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, nieuwste) |
+| **Node.js + Express** | map `backend/` met een basis Express-server + `express@latest` |
 
 ```
 mijn-project/
-  frontend/        # de Next.js + Tailwind app
+  frontend/    # Next.js + Tailwind app
+  backend/     # Node.js + Express API
 ```
 
 Opties:
 
-- `--frontend <naam>` — sla de vraag over, bv. `npx github:DafkeDD/itworxs-cli init --frontend nextjs`.
-- `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
+- `--frontend <naam>` — sla de frontend-vraag over (`nextjs`, `none`).
+- `--backend <naam>` — sla de backend-vraag over (`node-express`, `none`).
+- `--dry-run` — toont enkel wat er zou gebeuren, voert niets uit.
 
-Daarna start je de frontend met:
+Start daarna:
 
 ```bash
-cd frontend
-npm run dev
+cd frontend && npm run dev    # frontend op http://localhost:3000
+cd backend  && npm run dev    # backend op http://localhost:3001
 ```
 
 ### Andere commands

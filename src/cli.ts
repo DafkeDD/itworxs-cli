@@ -1,6 +1,6 @@
 import { runInit } from './commands/init';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
@@ -9,13 +9,14 @@ Gebruik:
   itworxs <command> [opties]
 
 Commands:
-  init       Project setup (vraagt welke frontend je wil)
+  init       Project setup (vraagt frontend en backend)
   help       Toon deze hulp
   version    Toon de versie
 
 Opties bij init:
-  --frontend <naam>   Sla de vraag over (bv. --frontend nextjs)
-  --dry-run           Toon enkel het commando, voer niets uit
+  --frontend <naam>   Sla de frontend-vraag over (bv. nextjs, none)
+  --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
+  --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
   -h, --help          Toon hulp
@@ -48,7 +49,8 @@ async function main(): Promise<void> {
     case 'init': {
       const dryRun = flags.includes('--dry-run');
       const frontend = getFlagValue(flags, '--frontend');
-      await runInit({ dryRun, frontend });
+      const backend = getFlagValue(flags, '--backend');
+      await runInit({ dryRun, frontend, backend });
       break;
     }
     default:

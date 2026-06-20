@@ -4,107 +4,159 @@ import { spawn } from 'node:child_process';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 
-// Map waarin de CLI per project geinstalleerd wordt. Draai je 'init' vanuit
-// die map, dan komt frontend/ in de map erboven (de projectroot).
+// Map waarin de CLI per project geinstalleerd kan zijn. Draai je 'init' vanuit
+// die map, dan komen frontend/ en backend/ in de map erboven (de projectroot).
 const INSTALL_DIR_NAME = 'itworxs-cli';
 
-interface FrontendChoice {
+interface Choice {
   value: string;
   label: string;
   hint: string;
 }
 
-const FRONTENDS: FrontendChoice[] = [
+const FRONTENDS: Choice[] = [
   { value: 'nextjs', label: 'Next.js', hint: 'met TailwindCSS, laatste versie' },
+  { value: 'none', label: 'Geen', hint: 'geen frontend' },
+];
+
+const BACKENDS: Choice[] = [
+  { value: 'node-express', label: 'Node.js + Express', hint: 'basis API-server' },
+  { value: 'none', label: 'Geen', hint: 'geen backend' },
 ];
 
 export interface InitOptions {
-  /** Toon enkel het commando dat gedraaid zou worden, voer niets uit. */
   dryRun?: boolean;
-  /** Sla de vraag over en kies direct deze frontend (non-interactief). */
   frontend?: string;
+  backend?: string;
 }
 
-/** Bepaal de projectroot (parent als we in de itworxs-cli map zitten). */
 function resolveProjectRoot(): string {
   const cwd = process.cwd();
   if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
   return cwd;
 }
 
-export async function runInit({ dryRun = false, frontend }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend, backend }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
 
-  // Stap 1: welke frontend?
-  let choice: string | symbol;
-  if (frontend) {
-    choice = frontend;
-  } else {
-    choice = await p.select({
-      message: 'Welke frontend wil je gebruiken?',
-      options: FRONTENDS.map((f) => ({ value: f.value, label: f.label, hint: f.hint })),
-    });
-  }
+  // Vraag 1: frontend
+  const frontendChoice = await pick('Welke frontend wil je gebruiken?', FRONTENDS, frontend);
+  if (frontendChoice === undefined) return; // geannuleerd
 
-  if (p.isCancel(choice)) {
-    p.cancel('Geannuleerd.');
+  // Vraag 2: backend
+  const backendChoice = await pick('Welke backend wil je gebruiken?', BACKENDS, backend);
+  if (backendChoice === undefined) return; // geannuleerd
+
+  if (frontendChoice === 'none' && backendChoice === 'none') {
+    p.outro(chalk.dim('Niets geselecteerd — niets te doen.'));
     return;
   }
-
-  const selected = FRONTENDS.find((f) => f.value === choice);
-  if (!selected) {
-    p.cancel(`Onbekende frontend: ${String(choice)}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  if (selected.value === 'nextjs') {
-    await setupNextjs(projectRoot, dryRun);
-  }
-}
-
-async function setupNextjs(projectRoot: string, dryRun: boolean): Promise<void> {
-  const frontendDir = path.join(projectRoot, 'frontend');
-
-  if (await dirHasContent(frontendDir)) {
-    p.cancel(`De map 'frontend' bestaat al en is niet leeg:\n  ${frontendDir}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  // Altijd de laatste versie via @latest; Tailwind via --tailwind.
-  const command =
-    'npx create-next-app@latest frontend ' +
-    '--ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes';
-
-  p.note(`${chalk.dim('map:')} ${frontendDir}\n${chalk.dim('cmd:')} ${command}`, 'Next.js + TailwindCSS');
 
   if (dryRun) {
+    if (frontendChoice === 'nextjs') p.note(nextjsCommand(projectRoot), 'Frontend: Next.js + TailwindCSS');
+    if (backendChoice === 'node-express') p.note(`map: ${path.join(projectRoot, 'backend')}\nbasis Node.js + Express + npm install express@latest`, 'Backend: Node.js + Express');
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
   }
 
-  const confirmed = await p.confirm({ message: 'Nu installeren?' });
-  if (p.isCancel(confirmed) || !confirmed) {
-    p.cancel('Geannuleerd.');
+  const done: string[] = [];
+  let failed = false;
+
+  if (frontendChoice === 'nextjs') {
+    (await setupNextjs(projectRoot)) ? done.push('frontend/ (Next.js + Tailwind)') : (failed = true);
+  }
+  if (!failed && backendChoice === 'node-express') {
+    (await setupNodeExpress(projectRoot)) ? done.push('backend/ (Node.js + Express)') : (failed = true);
+  }
+
+  if (failed) {
+    p.outro(chalk.red('Setup gestopt door een fout.'));
+    process.exitCode = 1;
     return;
   }
 
-  p.log.step('Next.js + TailwindCSS installeren...');
-  const code = await runInShell(command, projectRoot);
-
-  if (code === 0) {
-    p.outro(
-      chalk.green('Klaar! ') +
-        `Next.js staat in ${chalk.cyan('frontend/')}.  Start met: ${chalk.cyan('cd frontend && npm run dev')}`,
-    );
-  } else {
-    p.log.error(`Installatie mislukt (exit code ${code}).`);
-    process.exitCode = code ?? 1;
-  }
+  p.outro(chalk.green('Klaar! ') + (done.length ? `Aangemaakt: ${done.join(', ')}.` : ''));
 }
+
+/** Toon een select (of gebruik de meegegeven flag-waarde). undefined = geannuleerd. */
+async function pick(message: string, options: Choice[], preset?: string): Promise<string | undefined> {
+  if (preset) return preset;
+  const answer = await p.select({ message, options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })) });
+  if (p.isCancel(answer)) {
+    p.cancel('Geannuleerd.');
+    return undefined;
+  }
+  return answer as string;
+}
+
+// --- Next.js -------------------------------------------------------------
+
+function nextjsCommand(projectRoot: string): string {
+  return `map: ${path.join(projectRoot, 'frontend')}\ncmd: npx create-next-app@latest frontend --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes`;
+}
+
+async function setupNextjs(projectRoot: string): Promise<boolean> {
+  const dir = path.join(projectRoot, 'frontend');
+  if (await dirHasContent(dir)) {
+    p.log.error(`Map 'frontend' bestaat al en is niet leeg: ${dir}`);
+    return false;
+  }
+  p.log.step('Next.js + TailwindCSS installeren in frontend/ ...');
+  const command =
+    'npx create-next-app@latest frontend ' +
+    '--ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes';
+  return (await runInShell(command, projectRoot)) === 0;
+}
+
+// --- Node.js + Express ----------------------------------------------------
+
+async function setupNodeExpress(projectRoot: string): Promise<boolean> {
+  const dir = path.join(projectRoot, 'backend');
+  if (await dirHasContent(dir)) {
+    p.log.error(`Map 'backend' bestaat al en is niet leeg: ${dir}`);
+    return false;
+  }
+  p.log.step('Node.js + Express opzetten in backend/ ...');
+
+  await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+
+  const pkg = {
+    name: 'backend',
+    version: '1.0.0',
+    type: 'module',
+    main: 'src/index.js',
+    scripts: {
+      start: 'node src/index.js',
+      dev: 'node --watch src/index.js',
+    },
+  };
+  await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  await fs.writeFile(path.join(dir, 'src', 'index.js'), EXPRESS_SERVER);
+  await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\n.env\n');
+
+  // express in de laatste versie installeren
+  return (await runInShell('npm install express@latest', dir)) === 0;
+}
+
+const EXPRESS_SERVER = `import express from 'express';
+
+const app = express();
+const port = process.env.PORT ?? 3001;
+
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hallo vanuit de ItWorXs backend!' });
+});
+
+app.listen(port, () => {
+  console.log(\`Backend draait op http://localhost:\${port}\`);
+});
+`;
+
+// --- helpers --------------------------------------------------------------
 
 function runInShell(command: string, cwd: string): Promise<number | null> {
   return new Promise((resolve) => {
