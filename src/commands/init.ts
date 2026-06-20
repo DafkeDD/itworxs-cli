@@ -41,22 +41,22 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
 
-  // Vraag 1: frontend
   const frontendChoice = await pick('Welke frontend wil je gebruiken?', FRONTENDS, frontend);
-  if (frontendChoice === undefined) return; // geannuleerd
+  if (frontendChoice === undefined) return;
 
-  // Vraag 2: backend
   const backendChoice = await pick('Welke backend wil je gebruiken?', BACKENDS, backend);
-  if (backendChoice === undefined) return; // geannuleerd
+  if (backendChoice === undefined) return;
 
   if (frontendChoice === 'none' && backendChoice === 'none') {
-    p.outro(chalk.dim('Niets geselecteerd — niets te doen.'));
+    p.outro(chalk.dim('Niets geselecteerd - niets te doen.'));
     return;
   }
 
   if (dryRun) {
-    if (frontendChoice === 'nextjs') p.note(nextjsCommand(projectRoot), 'Frontend: Next.js + TailwindCSS');
-    if (backendChoice === 'node-express') p.note(`map: ${path.join(projectRoot, 'backend')}\nbasis Node.js + Express + npm install express@latest`, 'Backend: Node.js + Express');
+    if (frontendChoice === 'nextjs') p.note(nextjsNote(projectRoot), 'Frontend: Next.js + TailwindCSS');
+    if (backendChoice === 'node-express') {
+      p.note(`map: ${path.join(projectRoot, 'backend')}\nbasis Node.js + Express + npm install express@latest`, 'Backend: Node.js + Express');
+    }
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
   }
@@ -80,7 +80,6 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
   p.outro(chalk.green('Klaar! ') + (done.length ? `Aangemaakt: ${done.join(', ')}.` : ''));
 }
 
-/** Toon een select (of gebruik de meegegeven flag-waarde). undefined = geannuleerd. */
 async function pick(message: string, options: Choice[], preset?: string): Promise<string | undefined> {
   if (preset) return preset;
   const answer = await p.select({ message, options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })) });
@@ -93,7 +92,7 @@ async function pick(message: string, options: Choice[], preset?: string): Promis
 
 // --- Next.js -------------------------------------------------------------
 
-function nextjsCommand(projectRoot: string): string {
+function nextjsNote(projectRoot: string): string {
   return `map: ${path.join(projectRoot, 'frontend')}\ncmd: npx create-next-app@latest frontend --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes`;
 }
 
@@ -136,8 +135,8 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
   await fs.writeFile(path.join(dir, 'src', 'index.js'), EXPRESS_SERVER);
   await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\n.env\n');
 
-  // express in de laatste versie installeren
-  return (await runInShell('npm install express@latest', dir)) === 0;
+  // express in de laatste versie installeren (stil, zonder audit/funding-ruis)
+  return (await runInShell('npm install express@latest --no-audit --no-fund', dir)) === 0;
 }
 
 const EXPRESS_SERVER = `import express from 'express';
@@ -158,9 +157,22 @@ app.listen(port, () => {
 
 // --- helpers --------------------------------------------------------------
 
+// npm-omgeving die de ruis stilzet (audit, funding, warnings) en telemetry uitschakelt.
+function quietEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    npm_config_audit: 'false',
+    npm_config_fund: 'false',
+    npm_config_loglevel: 'error',
+    NEXT_TELEMETRY_DISABLED: '1',
+    ADBLOCK: '1',
+    DISABLE_OPENCOLLECTIVE: '1',
+  };
+}
+
 function runInShell(command: string, cwd: string): Promise<number | null> {
   return new Promise((resolve) => {
-    const child = spawn(command, { cwd, stdio: 'inherit', shell: true });
+    const child = spawn(command, { cwd, stdio: 'inherit', shell: true, env: quietEnv() });
     child.on('close', (code) => resolve(code));
     child.on('error', (err) => {
       console.error(err);
