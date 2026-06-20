@@ -1,58 +1,30 @@
 # itworxs-cli
 
 Basis CLI voor ItWorXs projecten, geschreven in **TypeScript** (gebundeld met `tsup`).
-Wordt **per project** geïnstalleerd, rechtstreeks van GitHub, in een zichtbare map
-`itworxs-cli/`.
-
-## Installeren in een project
-
-Eén commando, vanuit de root van je project. Het haalt de CLI **rechtstreeks van
-GitHub** en zet hem in de map `itworxs-cli/`:
-
-```bash
-npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli
-```
-
-### Install + wizard in één keer
-
-Wil je meteen na de install de vraag krijgen, koppel dan install en `init` in
-één regel (PowerShell), vanuit je projectroot:
-
-```powershell
-npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli; cd itworxs-cli; npx itworxs init
-```
-
-> In de repo zit ook `install.ps1` dat exact dit doet.
-
-Resultaat — de install is zichtbaar in `itworxs-cli/`, je projectroot blijft schoon:
-
-```
-mijn-project/
-  itworxs-cli/
-    node_modules/
-    package.json
-    package-lock.json
-```
+Per project te gebruiken via **npx** — rechtstreeks van GitHub, zonder iets te
+installeren in je project.
 
 ## Gebruik
 
+Draai dit in de root van je project:
+
 ```bash
-cd itworxs-cli
-npx itworxs init       # zet een frontend op (vraagt welke je wil)
-npx itworxs help       # toon hulp
-npx itworxs version    # toon versie
+npx github:DafkeDD/itworxs-cli init
 ```
+
+Dat is alles. De CLI wordt tijdelijk van GitHub gehaald (in de npx-cache, **niet**
+in je project) en de setup-wizard start meteen. Je project blijft volledig schoon —
+er komt geen `node_modules` of `package.json` van de CLI in te staan.
 
 ### `init`
 
-`init` start een interactieve setup (zoals een wizard) en vraagt welke frontend
-je wil:
+`init` start een interactieve wizard en vraagt welke frontend je wil:
 
 ```
 ┌   itworxs  project setup
 │
 ◆  Welke frontend wil je gebruiken?
-│  ● Next.js (met TailwindCSS, laatste versie)
+│  ● Next.js   met TailwindCSS, laatste versie
 └
 ```
 
@@ -61,13 +33,12 @@ daarin `create-next-app@latest` (dus altijd de nieuwste Next.js + TailwindCSS):
 
 ```
 mijn-project/
-  itworxs-cli/     # de CLI-install (zichtbaar, van GitHub)
   frontend/        # de Next.js + Tailwind app
 ```
 
 Opties:
 
-- `--frontend <naam>` — sla de vraag over, bv. `npx itworxs init --frontend nextjs`.
+- `--frontend <naam>` — sla de vraag over, bv. `npx github:DafkeDD/itworxs-cli init --frontend nextjs`.
 - `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
 
 Daarna start je de frontend met:
@@ -75,6 +46,13 @@ Daarna start je de frontend met:
 ```bash
 cd frontend
 npm run dev
+```
+
+### Andere commands
+
+```bash
+npx github:DafkeDD/itworxs-cli help       # toon hulp
+npx github:DafkeDD/itworxs-cli version    # toon versie
 ```
 
 ## Ontwikkelen aan de CLI zelf
@@ -93,13 +71,17 @@ node dist/cli.js help  # lokaal draaien
 
 ```
 src/cli.ts             # entrypoint (argument parsing)
-src/commands/init.ts   # init command (frontend-prompt + install)
-install.ps1            # helper-commando voor de install
+src/commands/init.ts   # init command (wizard + frontend install)
 dist/                  # build-output (gegenereerd, niet in git)
 tsup.config.ts         # bundler-config
 tsconfig.json          # TypeScript-config
 package.json           # bin-veld maakt 'itworxs' command aan
 ```
+
+## Een nieuwe vraag/optie toevoegen
+
+De wizard zit in `src/commands/init.ts` (met `@clack/prompts`). Voeg een optie toe
+aan `FRONTENDS`, of voeg een extra `p.select` / `p.text` stap toe. Daarna `npm run build`.
 
 ## Licentie
 
