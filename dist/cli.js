@@ -150,9 +150,9 @@ async function setupNodeExpress(projectRoot) {
   await fs.writeFile(path.join(dir, "src", "config", "env.ts"), ENV_TS);
   await fs.writeFile(path.join(dir, "src", "services", "logger.ts"), LOGGER_TS);
   await fs.writeFile(path.join(dir, ".env.example"), ENV_EXAMPLE);
-  if (await runInShell("npm install express pg pino dotenv --no-audit --no-fund", dir) !== 0) return false;
+  if (await runInShell("npm install express pg pino dotenv node-cron cors --no-audit --no-fund", dir) !== 0) return false;
   return await runInShell(
-    "npm install -D typescript tsx @types/express @types/node @types/pg prettier --no-audit --no-fund",
+    "npm install -D typescript tsx @types/express @types/node @types/pg @types/node-cron @types/cors prettier --no-audit --no-fund",
     dir
   ) === 0;
 }
@@ -655,7 +655,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.8.0";
+var VERSION = "0.8.1";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

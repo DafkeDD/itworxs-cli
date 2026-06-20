@@ -202,10 +202,10 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
   await fs.writeFile(path.join(dir, 'src', 'services', 'logger.ts'), LOGGER_TS);
   await fs.writeFile(path.join(dir, '.env.example'), ENV_EXAMPLE);
 
-  if ((await runInShell('npm install express pg pino dotenv --no-audit --no-fund', dir)) !== 0) return false;
+  if ((await runInShell('npm install express pg pino dotenv node-cron cors --no-audit --no-fund', dir)) !== 0) return false;
   return (
     (await runInShell(
-      'npm install -D typescript tsx @types/express @types/node @types/pg prettier --no-audit --no-fund',
+      'npm install -D typescript tsx @types/express @types/node @types/pg @types/node-cron @types/cors prettier --no-audit --no-fund',
       dir,
     )) === 0
   );
