@@ -158,18 +158,44 @@ async function setupNodeExpress(projectRoot) {
 }
 var EXPRESS_SERVER_TS = `import express from 'express'
 import type { Request, Response } from 'express'
+import cors from 'cors'
+import cron from 'node-cron'
+import pool from './config/db.js'
+import { env } from './config/env.js'
+import { logger } from './services/logger.js'
 
 const app = express()
-const port = process.env.PORT ?? 3001
 
+app.use(
+    cors({
+        origin: env.FRONTEND_URL,
+        credentials: true
+    })
+)
 app.use(express.json())
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({ message: 'Hallo vanuit de ItWorXs backend!' })
 })
 
-app.listen(port, () => {
-    console.log('Backend draait op http://localhost:' + port)
+// Health check met database-ping
+app.get('/health', async (_req: Request, res: Response) => {
+    try {
+        await pool.query('SELECT 1')
+        res.json({ status: 'ok', db: 'up' })
+    } catch (err) {
+        logger.error({ err }, 'Database health check mislukt')
+        res.status(500).json({ status: 'error', db: 'down' })
+    }
+})
+
+// Voorbeeld cron-taak (elke minuut). Pas aan of verwijder.
+cron.schedule('* * * * *', () => {
+    logger.debug('Cron-taak draait')
+})
+
+app.listen(env.PORT, () => {
+    logger.info('Backend draait op http://localhost:' + env.PORT)
 })
 `;
 var TSCONFIG_BACKEND = `{
@@ -230,7 +256,8 @@ export const env = {
     DB_USER: required('DB_USER', 'postgres'),
     DB_PASSWORD: required('DB_PASSWORD', 'password'),
     DB_DATABASE: required('DB_DATABASE', 'projectx'),
-    DB_PORT: Number(process.env.DB_PORT ?? 5432)
+    DB_PORT: Number(process.env.DB_PORT ?? 5432),
+    FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:3000'
 }
 `;
 var LOGGER_TS = `import pino from 'pino'
@@ -655,7 +682,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.8.1";
+var VERSION = "0.8.2";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
