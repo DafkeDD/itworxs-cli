@@ -1,19 +1,44 @@
 # itworxs-cli
 
 Basis CLI voor ItWorXs projecten, geschreven in **TypeScript** (gebundeld met `tsup`).
-Per project te gebruiken — **zonder iets te installeren** in je project.
+Wordt **per project** geïnstalleerd in een eigen map `itworxs-cli/`, zodat je
+duidelijk ziet dat de CLI in je project geïnstalleerd is en je projectroot schoon blijft.
+
+## Installeren in een project
+
+Draai dit in de root van je project (PowerShell). Het maakt de map `itworxs-cli/`
+en installeert de CLI daarin:
+
+```powershell
+New-Item -ItemType Directory -Force itworxs-cli > $null
+Push-Location itworxs-cli
+npm init -y > $null
+npm install --save-dev github:DafkeDD/itworxs-cli
+Pop-Location
+```
+
+Resultaat — de install is zichtbaar in `itworxs-cli/`:
+
+```
+mijn-project/
+  itworxs-cli/
+    node_modules/
+    package.json
+    package-lock.json
+```
+
+> In de repo zit ook `install.ps1` met exact deze stappen.
 
 ## Gebruik
 
-Draai dit in de root van je project:
+Draai de commands **vanuit de `itworxs-cli` map**:
 
 ```bash
-npx github:DafkeDD/itworxs-cli init
+cd itworxs-cli
+npx itworxs init       # zet een frontend op (vraagt welke je wil)
+npx itworxs help       # toon hulp
+npx itworxs version    # toon versie
 ```
-
-De CLI wordt tijdelijk opgehaald van GitHub (in de npx-cache, **niet** in je
-project) en draait meteen. Je project blijft dus volledig schoon — er komt geen
-`node_modules` of `package.json` van de CLI in te staan.
 
 ### `init`
 
@@ -28,26 +53,24 @@ Keuze [1]:
 ```
 
 Bij keuze 1 draait de CLI `create-next-app@latest` (dus altijd de nieuwste
-Next.js + TailwindCSS) en zet die in een map **`frontend/`** in je projectroot:
+Next.js + TailwindCSS) en zet die in een map **`frontend/`** in je projectroot
+(naast `itworxs-cli/`):
 
 ```
 mijn-project/
-  frontend/     # de Next.js + Tailwind app
+  itworxs-cli/     # de CLI-install (zichtbaar)
+  frontend/        # de Next.js + Tailwind app
 ```
+
+Opties:
+
+- `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
 
 Daarna start je de frontend met:
 
 ```bash
 cd frontend
 npm run dev
-```
-
-### Andere commands
-
-```bash
-npx github:DafkeDD/itworxs-cli help       # toon hulp
-npx github:DafkeDD/itworxs-cli version    # toon versie
-npx github:DafkeDD/itworxs-cli init --dry-run   # toon enkel het commando
 ```
 
 ## Ontwikkelen aan de CLI zelf
@@ -68,17 +91,12 @@ node dist/cli.js help  # lokaal draaien
 ```
 src/cli.ts             # entrypoint (argument parsing)
 src/commands/init.ts   # init command (frontend-prompt + install)
+install.ps1            # helper om de CLI in itworxs-cli/ te installeren
 dist/                  # build-output (gegenereerd, niet in git)
 tsup.config.ts         # bundler-config
 tsconfig.json          # TypeScript-config
 package.json           # bin-veld maakt 'itworxs' command aan
 ```
-
-## Een nieuw command toevoegen
-
-1. Maak `src/commands/<naam>.ts` met een geëxporteerde functie.
-2. Importeer en koppel het in `src/cli.ts` in de `switch`.
-3. `npm run build`.
 
 ## Licentie
 
