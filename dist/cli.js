@@ -95,6 +95,7 @@ async function setupNextIntl(dir) {
   await fs.writeFile(path.join(dir, "messages", "en.json"), MESSAGES_EN);
   await fs.writeFile(path.join(dir, "messages", "nl.json"), MESSAGES_NL);
   await fs.writeFile(path.join(dir, "messages", "fr.json"), MESSAGES_FR);
+  await fs.writeFile(path.join(dir, "messages", "de.json"), MESSAGES_DE);
   const localeDir = path.join(src, "app", "[locale]");
   await fs.mkdir(localeDir, { recursive: true });
   await fs.writeFile(path.join(localeDir, "layout.tsx"), LOCALE_LAYOUT_TSX);
@@ -179,7 +180,7 @@ var ROUTING_TS = `import { defineRouting } from 'next-intl/routing'
 
 // Pas hier de ondersteunde talen aan.
 export const routing = defineRouting({
-    locales: ['en', 'nl', 'fr'],
+    locales: ['en', 'nl', 'fr', 'de'],
     defaultLocale: 'en'
 })
 `;
@@ -232,6 +233,13 @@ var MESSAGES_FR = `{
     "home": {
         "title": "Bienvenue chez ItWorXs!",
         "welcomeMessage": "Une application Next.js multilingue, prete a l'emploi."
+    }
+}
+`;
+var MESSAGES_DE = `{
+    "home": {
+        "title": "Willkommen bei ItWorXs!",
+        "welcomeMessage": "Eine mehrsprachige Next.js-App, sofort einsatzbereit."
     }
 }
 `;
@@ -384,7 +392,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.6.2";
+var VERSION = "0.6.3";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

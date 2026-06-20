@@ -129,6 +129,7 @@ async function setupNextIntl(dir: string): Promise<boolean> {
   await fs.writeFile(path.join(dir, 'messages', 'en.json'), MESSAGES_EN);
   await fs.writeFile(path.join(dir, 'messages', 'nl.json'), MESSAGES_NL);
   await fs.writeFile(path.join(dir, 'messages', 'fr.json'), MESSAGES_FR);
+  await fs.writeFile(path.join(dir, 'messages', 'de.json'), MESSAGES_DE);
 
   const localeDir = path.join(src, 'app', '[locale]');
   await fs.mkdir(localeDir, { recursive: true });
@@ -234,7 +235,7 @@ const ROUTING_TS = `import { defineRouting } from 'next-intl/routing'
 
 // Pas hier de ondersteunde talen aan.
 export const routing = defineRouting({
-    locales: ['en', 'nl', 'fr'],
+    locales: ['en', 'nl', 'fr', 'de'],
     defaultLocale: 'en'
 })
 `;
@@ -293,6 +294,14 @@ const MESSAGES_FR = `{
     "home": {
         "title": "Bienvenue chez ItWorXs!",
         "welcomeMessage": "Une application Next.js multilingue, prete a l'emploi."
+    }
+}
+`;
+
+const MESSAGES_DE = `{
+    "home": {
+        "title": "Willkommen bei ItWorXs!",
+        "welcomeMessage": "Eine mehrsprachige Next.js-App, sofort einsatzbereit."
     }
 }
 `;
