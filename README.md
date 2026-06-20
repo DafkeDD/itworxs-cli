@@ -1,45 +1,23 @@
 # itworxs-cli
 
 Basis CLI voor ItWorXs projecten, geschreven in **TypeScript** (gebundeld met `tsup`).
-Wordt **per project** geïnstalleerd (niet globaal).
-
-## Installeren in een project
-
-Installeer de CLI in een eigen submap `itworxs-cli/` zodat de projectroot schoon
-blijft (`node_modules` en `package*.json` komen in die submap, niet in de root).
-
-```bash
-# vanuit de root van je project
-mkdir itworxs-cli
-cd itworxs-cli
-npm init -y
-npm install --save-dev github:DafkeDD/itworxs-cli
-```
-
-Of in één keer (PowerShell), vanuit je projectroot:
-
-```powershell
-New-Item -ItemType Directory -Force itworxs-cli > $null
-Push-Location itworxs-cli
-npm init -y > $null
-npm install --save-dev github:DafkeDD/itworxs-cli
-Pop-Location
-```
+Per project te gebruiken — **zonder iets te installeren** in je project.
 
 ## Gebruik
 
-Draai de commands vanuit de `itworxs-cli` map:
+Draai dit in de root van je project:
 
 ```bash
-cd itworxs-cli
-npx itworxs init       # zet een frontend op (vraagt welke je wil)
-npx itworxs help       # toon hulp
-npx itworxs version    # toon versie
+npx github:DafkeDD/itworxs-cli init
 ```
+
+De CLI wordt tijdelijk opgehaald van GitHub (in de npx-cache, **niet** in je
+project) en draait meteen. Je project blijft dus volledig schoon — er komt geen
+`node_modules` of `package.json` van de CLI in te staan.
 
 ### `init`
 
-`init` vraagt welke frontend je wil gebruiken en zet die op:
+`init` vraagt welke frontend je wil gebruiken:
 
 ```
 Welke frontend wil je gebruiken?
@@ -50,27 +28,26 @@ Keuze [1]:
 ```
 
 Bij keuze 1 draait de CLI `create-next-app@latest` (dus altijd de nieuwste
-Next.js + TailwindCSS) en installeert die in een map **`frontend/`** in je
-projectroot:
+Next.js + TailwindCSS) en zet die in een map **`frontend/`** in je projectroot:
 
 ```
 mijn-project/
-  itworxs-cli/     # de CLI-install
-  frontend/        # de Next.js + Tailwind app
+  frontend/     # de Next.js + Tailwind app
 ```
-
-> Draai je `init` vanuit de `itworxs-cli` map, dan komt `frontend/` in de map
-> erboven (de projectroot). Draai je het ergens anders, dan in de huidige map.
-
-Opties:
-
-- `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
 
 Daarna start je de frontend met:
 
 ```bash
 cd frontend
 npm run dev
+```
+
+### Andere commands
+
+```bash
+npx github:DafkeDD/itworxs-cli help       # toon hulp
+npx github:DafkeDD/itworxs-cli version    # toon versie
+npx github:DafkeDD/itworxs-cli init --dry-run   # toon enkel het commando
 ```
 
 ## Ontwikkelen aan de CLI zelf

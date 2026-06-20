@@ -4,10 +4,6 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 
-// Map waarin de CLI per project geinstalleerd wordt. Wordt 'init' vanuit zo'n
-// map gedraaid, dan is de projectroot de map erboven.
-const INSTALL_DIR_NAME = 'itworxs-cli';
-
 interface FrontendChoice {
   id: string;
   label: string;
@@ -22,15 +18,9 @@ export interface InitOptions {
   dryRun?: boolean;
 }
 
-/** Bepaal de projectroot (parent als we in de itworxs-cli map zitten). */
-function resolveProjectRoot(): string {
-  const cwd = process.cwd();
-  if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
-  return cwd;
-}
-
 export async function runInit({ dryRun = false }: InitOptions = {}): Promise<void> {
-  const projectRoot = resolveProjectRoot();
+  // De frontend komt in de map waar je het commando draait (je projectroot).
+  const projectRoot = process.cwd();
 
   const choice = await askFrontend();
   if (!choice) {
