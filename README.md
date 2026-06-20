@@ -34,19 +34,19 @@ npx itworxs version    # toon versie
 
 ### `init`
 
-`init` vraagt welke frontend je wil gebruiken:
+`init` start een interactieve setup (zoals een wizard) en vraagt welke frontend
+je wil:
 
 ```
-Welke frontend wil je gebruiken?
-
-  1) Next.js + TailwindCSS (laatste versie)
-
-Keuze [1]:
+┌   itworxs  project setup
+│
+◆  Welke frontend wil je gebruiken?
+│  ● Next.js (met TailwindCSS, laatste versie)
+└
 ```
 
-Bij keuze 1 draait de CLI `create-next-app@latest` (dus altijd de nieuwste
-Next.js + TailwindCSS) en zet die in een map **`frontend/`** in je projectroot
-(naast `itworxs-cli/`):
+Bij **Next.js** maakt de CLI een map **`frontend/`** in je projectroot en draait
+daarin `create-next-app@latest` (dus altijd de nieuwste Next.js + TailwindCSS):
 
 ```
 mijn-project/
@@ -56,6 +56,7 @@ mijn-project/
 
 Opties:
 
+- `--frontend <naam>` — sla de vraag over, bv. `npx itworxs init --frontend nextjs`.
 - `--dry-run` — toont enkel het commando dat gedraaid zou worden, voert niets uit.
 
 Daarna start je de frontend met:

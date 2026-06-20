@@ -1,26 +1,28 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
+import * as p from '@clack/prompts';
+import chalk from 'chalk';
 
 // Map waarin de CLI per project geinstalleerd wordt. Draai je 'init' vanuit
-// die map, dan is de projectroot de map erboven (zodat frontend/ in de
-// projectroot komt, naast itworxs-cli/).
+// die map, dan komt frontend/ in de map erboven (de projectroot).
 const INSTALL_DIR_NAME = 'itworxs-cli';
 
 interface FrontendChoice {
-  id: string;
+  value: string;
   label: string;
+  hint: string;
 }
 
 const FRONTENDS: FrontendChoice[] = [
-  { id: 'nextjs', label: 'Next.js + TailwindCSS (laatste versie)' },
+  { value: 'nextjs', label: 'Next.js', hint: 'met TailwindCSS, laatste versie' },
 ];
 
 export interface InitOptions {
   /** Toon enkel het commando dat gedraaid zou worden, voer niets uit. */
   dryRun?: boolean;
+  /** Sla de vraag over en kies direct deze frontend (non-interactief). */
+  frontend?: string;
 }
 
 /** Bepaal de projectroot (parent als we in de itworxs-cli map zitten). */
@@ -30,43 +32,44 @@ function resolveProjectRoot(): string {
   return cwd;
 }
 
-export async function runInit({ dryRun = false }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
-  const choice = await askFrontend();
-  if (!choice) {
-    console.error('Geen geldige keuze gemaakt. Gestopt.');
+  p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
+
+  // Stap 1: welke frontend?
+  let choice: string | symbol;
+  if (frontend) {
+    choice = frontend;
+  } else {
+    choice = await p.select({
+      message: 'Welke frontend wil je gebruiken?',
+      options: FRONTENDS.map((f) => ({ value: f.value, label: f.label, hint: f.hint })),
+    });
+  }
+
+  if (p.isCancel(choice)) {
+    p.cancel('Geannuleerd.');
+    return;
+  }
+
+  const selected = FRONTENDS.find((f) => f.value === choice);
+  if (!selected) {
+    p.cancel(`Onbekende frontend: ${String(choice)}`);
     process.exitCode = 1;
     return;
   }
 
-  if (choice.id === 'nextjs') {
-    await installNextjs(projectRoot, dryRun);
+  if (selected.value === 'nextjs') {
+    await setupNextjs(projectRoot, dryRun);
   }
 }
 
-/** Vraag de gebruiker welke frontend hij wil. */
-async function askFrontend(): Promise<FrontendChoice | undefined> {
-  const rl = createInterface({ input, output });
-  try {
-    console.log('\nWelke frontend wil je gebruiken?\n');
-    FRONTENDS.forEach((f, i) => console.log(`  ${i + 1}) ${f.label}`));
-    const raw = (await rl.question('\nKeuze [1]: ')).trim();
-    const answer = raw === '' ? '1' : raw;
-    const idx = Number.parseInt(answer, 10) - 1;
-    return FRONTENDS[idx];
-  } finally {
-    rl.close();
-  }
-}
-
-/** Installeer Next.js + TailwindCSS in de map frontend/ van de projectroot. */
-async function installNextjs(projectRoot: string, dryRun: boolean): Promise<void> {
+async function setupNextjs(projectRoot: string, dryRun: boolean): Promise<void> {
   const frontendDir = path.join(projectRoot, 'frontend');
 
   if (await dirHasContent(frontendDir)) {
-    console.error(`\nDe map 'frontend' bestaat al en is niet leeg:\n  ${frontendDir}`);
-    console.error('Verwijder of hernoem die map en probeer opnieuw.\n');
+    p.cancel(`De map 'frontend' bestaat al en is niet leeg:\n  ${frontendDir}`);
     process.exitCode = 1;
     return;
   }
@@ -76,20 +79,29 @@ async function installNextjs(projectRoot: string, dryRun: boolean): Promise<void
     'npx create-next-app@latest frontend ' +
     '--ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes';
 
-  console.log(`\nNext.js + TailwindCSS installeren in:\n  ${frontendDir}\n`);
-  console.log(`Commando: ${command}\n`);
+  p.note(`${chalk.dim('map:')} ${frontendDir}\n${chalk.dim('cmd:')} ${command}`, 'Next.js + TailwindCSS');
 
   if (dryRun) {
-    console.log('(dry-run: niets uitgevoerd)\n');
+    p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
   }
 
+  const confirmed = await p.confirm({ message: 'Nu installeren?' });
+  if (p.isCancel(confirmed) || !confirmed) {
+    p.cancel('Geannuleerd.');
+    return;
+  }
+
+  p.log.step('Next.js + TailwindCSS installeren...');
   const code = await runInShell(command, projectRoot);
+
   if (code === 0) {
-    console.log('\nKlaar! Next.js + TailwindCSS staat in de map frontend/.');
-    console.log('Starten:\n  cd frontend\n  npm run dev\n');
+    p.outro(
+      chalk.green('Klaar! ') +
+        `Next.js staat in ${chalk.cyan('frontend/')}.  Start met: ${chalk.cyan('cd frontend && npm run dev')}`,
+    );
   } else {
-    console.error(`\nInstallatie mislukt (exit code ${code}).\n`);
+    p.log.error(`Installatie mislukt (exit code ${code}).`);
     process.exitCode = code ?? 1;
   }
 }
