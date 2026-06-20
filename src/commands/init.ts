@@ -12,15 +12,29 @@ const RENAME_MAP: Record<string, string> = {
   gitignore: '.gitignore',
 };
 
+// Naam van de map waarin de CLI per project geinstalleerd wordt. Wordt 'init'
+// vanuit zo'n map gedraaid, dan scaffolden we standaard de map erboven.
+const INSTALL_DIR_NAME = 'itworxs-cli';
+
 export interface InitOptions {
   force?: boolean;
-  cwd?: string;
+  /** Doelmap. Standaard de projectroot (parent als we in itworxs-cli/ zitten). */
+  target?: string;
 }
 
-/** Scaffold de huidige map met een basis projectstructuur. */
-export async function runInit({ force = false, cwd = process.cwd() }: InitOptions = {}): Promise<void> {
-  const projectName = path.basename(cwd);
-  console.log(`\nProject initialiseren in: ${cwd}`);
+/** Bepaal de map die gescaffold moet worden. */
+function resolveTargetDir(target?: string): string {
+  const cwd = process.cwd();
+  if (target) return path.resolve(cwd, target);
+  if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
+  return cwd;
+}
+
+/** Scaffold het project met een basis structuur. */
+export async function runInit({ force = false, target }: InitOptions = {}): Promise<void> {
+  const destDir = resolveTargetDir(target);
+  const projectName = path.basename(destDir);
+  console.log(`\nProject initialiseren in: ${destDir}`);
 
   const files = await collectTemplateFiles(TEMPLATES_DIR);
 
@@ -35,7 +49,7 @@ export async function runInit({ force = false, cwd = process.cwd() }: InitOption
   for (const rel of files) {
     const src = path.join(TEMPLATES_DIR, rel);
     const destRel = RENAME_MAP[rel] ?? rel;
-    const dest = path.join(cwd, destRel);
+    const dest = path.join(destDir, destRel);
 
     const exists = await pathExists(dest);
     if (exists && !force) {

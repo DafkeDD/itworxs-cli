@@ -9,19 +9,34 @@ Gebruik:
   itworxs <command> [opties]
 
 Commands:
-  init            Scaffold de huidige map met een basis projectstructuur
+  init            Scaffold het project met een basis structuur
   help            Toon deze hulp
   version         Toon de versie
 
 Opties:
-  -f, --force     Overschrijf bestaande bestanden bij init
-  -h, --help      Toon hulp
-  -v, --version   Toon de versie
+  -t, --target <map>   Doelmap om te scaffolden (standaard: de projectroot)
+  -f, --force          Overschrijf bestaande bestanden bij init
+  -h, --help           Toon hulp
+  -v, --version        Toon de versie
+
+Let op:
+  Wordt 'init' gedraaid vanuit een map met de naam 'itworxs-cli', dan
+  scaffold het standaard de map erboven (de projectroot). Gebruik --target
+  om een andere map te kiezen.
 
 Voorbeelden:
   itworxs init
   itworxs init --force
+  itworxs init --target .
 `;
+
+function getFlagValue(flags: string[], names: string[]): string | undefined {
+  for (const name of names) {
+    const idx = flags.indexOf(name);
+    if (idx !== -1) return flags[idx + 1];
+  }
+  return undefined;
+}
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -41,7 +56,8 @@ async function main(): Promise<void> {
   switch (command) {
     case 'init': {
       const force = flags.includes('-f') || flags.includes('--force');
-      await runInit({ force, cwd: process.cwd() });
+      const target = getFlagValue(flags, ['--target', '-t']);
+      await runInit({ force, target });
       break;
     }
     default:
