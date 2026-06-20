@@ -91,10 +91,10 @@ async function setupNextIntl(dir) {
   await fs.writeFile(path.join(src, "i18n", "navigation.ts"), NAVIGATION_TS);
   await fs.writeFile(path.join(src, "i18n", "request.ts"), REQUEST_TS);
   await fs.writeFile(path.join(src, "proxy.ts"), PROXY_TS);
-  await fs.mkdir(path.join(src, "messages"), { recursive: true });
-  await fs.writeFile(path.join(src, "messages", "en.json"), MESSAGES_EN);
-  await fs.writeFile(path.join(src, "messages", "nl.json"), MESSAGES_NL);
-  await fs.writeFile(path.join(src, "messages", "fr.json"), MESSAGES_FR);
+  await fs.mkdir(path.join(dir, "messages"), { recursive: true });
+  await fs.writeFile(path.join(dir, "messages", "en.json"), MESSAGES_EN);
+  await fs.writeFile(path.join(dir, "messages", "nl.json"), MESSAGES_NL);
+  await fs.writeFile(path.join(dir, "messages", "fr.json"), MESSAGES_FR);
   const localeDir = path.join(src, "app", "[locale]");
   await fs.mkdir(localeDir, { recursive: true });
   await fs.writeFile(path.join(localeDir, "layout.tsx"), LOCALE_LAYOUT_TSX);
@@ -201,7 +201,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
     return {
         locale,
-        messages: (await import(\`../messages/\${locale}.json\`)).default
+        messages: (await import(\`../../messages/\${locale}.json\`)).default
     }
 })
 `;
@@ -384,7 +384,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.6.1";
+var VERSION = "0.6.2";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
