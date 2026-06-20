@@ -1,23 +1,19 @@
 # itworxs-cli
 
 Basis CLI voor ItWorXs projecten, geschreven in **TypeScript** (gebundeld met `tsup`).
-Wordt **per project** geïnstalleerd in een eigen map `itworxs-cli/`, zodat je
-duidelijk ziet dat de CLI in je project geïnstalleerd is en je projectroot schoon blijft.
+Wordt **per project** geïnstalleerd, rechtstreeks van GitHub, in een zichtbare map
+`itworxs-cli/`.
 
 ## Installeren in een project
 
-Draai dit in de root van je project (PowerShell). Het maakt de map `itworxs-cli/`
-en installeert de CLI daarin:
+Eén commando, vanuit de root van je project. Het haalt de CLI **rechtstreeks van
+GitHub** en zet hem in de map `itworxs-cli/`:
 
-```powershell
-New-Item -ItemType Directory -Force itworxs-cli > $null
-Push-Location itworxs-cli
-npm init -y > $null
-npm install --save-dev github:DafkeDD/itworxs-cli
-Pop-Location
+```bash
+npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli
 ```
 
-Resultaat — de install is zichtbaar in `itworxs-cli/`:
+Resultaat — de install is zichtbaar in `itworxs-cli/`, je projectroot blijft schoon:
 
 ```
 mijn-project/
@@ -27,11 +23,7 @@ mijn-project/
     package-lock.json
 ```
 
-> In de repo zit ook `install.ps1` met exact deze stappen.
-
 ## Gebruik
-
-Draai de commands **vanuit de `itworxs-cli` map**:
 
 ```bash
 cd itworxs-cli
@@ -58,7 +50,7 @@ Next.js + TailwindCSS) en zet die in een map **`frontend/`** in je projectroot
 
 ```
 mijn-project/
-  itworxs-cli/     # de CLI-install (zichtbaar)
+  itworxs-cli/     # de CLI-install (zichtbaar, van GitHub)
   frontend/        # de Next.js + Tailwind app
 ```
 
@@ -81,7 +73,6 @@ cd itworxs-cli
 
 npm install            # installeert deps + bouwt dist (prepare-script)
 npm run build          # eenmalig bouwen
-npm run dev            # bouwen in watch-mode
 npm run typecheck      # alleen types controleren
 node dist/cli.js help  # lokaal draaien
 ```
@@ -91,7 +82,7 @@ node dist/cli.js help  # lokaal draaien
 ```
 src/cli.ts             # entrypoint (argument parsing)
 src/commands/init.ts   # init command (frontend-prompt + install)
-install.ps1            # helper om de CLI in itworxs-cli/ te installeren
+install.ps1            # helper-commando voor de install
 dist/                  # build-output (gegenereerd, niet in git)
 tsup.config.ts         # bundler-config
 tsconfig.json          # TypeScript-config
