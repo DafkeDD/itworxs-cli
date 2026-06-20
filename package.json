@@ -1,6 +1,6 @@
 {
   "name": "itworxs-cli",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Basis CLI voor ItWorXs projecten",
   "type": "module",
   "bin": {
@@ -13,8 +13,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "start": "node dist/cli.js",
-    "typecheck": "tsc --noEmit",
-    "prepare": "tsup"
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": ">=18"
