@@ -171,6 +171,13 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
 
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
 
+  // standaard backend-structuur (lege mappen met .gitkeep)
+  const subDirs = ['config', 'controllers', 'data', 'middleware', 'modals', 'routes', 'services'];
+  for (const sub of subDirs) {
+    await fs.mkdir(path.join(dir, 'src', sub), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', sub, '.gitkeep'), '');
+  }
+
   const pkg = {
     name: 'backend',
     version: '1.0.0',

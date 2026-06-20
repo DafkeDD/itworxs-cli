@@ -124,6 +124,11 @@ async function setupNodeExpress(projectRoot) {
   }
   p.log.step("Node.js + Express (TypeScript) opzetten in backend/ ...");
   await fs.mkdir(path.join(dir, "src"), { recursive: true });
+  const subDirs = ["config", "controllers", "data", "middleware", "modals", "routes", "services"];
+  for (const sub of subDirs) {
+    await fs.mkdir(path.join(dir, "src", sub), { recursive: true });
+    await fs.writeFile(path.join(dir, "src", sub, ".gitkeep"), "");
+  }
   const pkg = {
     name: "backend",
     version: "1.0.0",
@@ -527,7 +532,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.7.1";
+var VERSION = "0.7.2";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
