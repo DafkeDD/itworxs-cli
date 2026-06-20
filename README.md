@@ -13,6 +13,17 @@ GitHub** en zet hem in de map `itworxs-cli/`:
 npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli
 ```
 
+### Install + wizard in één keer
+
+Wil je meteen na de install de vraag krijgen, koppel dan install en `init` in
+één regel (PowerShell), vanuit je projectroot:
+
+```powershell
+npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli; cd itworxs-cli; npx itworxs init
+```
+
+> In de repo zit ook `install.ps1` dat exact dit doet.
+
 Resultaat — de install is zichtbaar in `itworxs-cli/`, je projectroot blijft schoon:
 
 ```

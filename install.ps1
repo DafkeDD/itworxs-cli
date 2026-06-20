@@ -1,9 +1,8 @@
-# Installeert de itworxs-cli rechtstreeks van GitHub in een zichtbare map
-# 'itworxs-cli/' in je project. Draai vanuit de root van je project:
-#   npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli
+# Installeert de itworxs-cli rechtstreeks van GitHub in de map 'itworxs-cli/'
+# en start meteen de setup-wizard. Draai dit vanuit de root van je project:
+#   powershell -ExecutionPolicy Bypass -File install.ps1
 
 npm install --prefix itworxs-cli github:DafkeDD/itworxs-cli
-
-Write-Host ""
-Write-Host "Klaar. De CLI staat nu in de map itworxs-cli/ (rechtstreeks van GitHub)."
-Write-Host "Gebruik:  cd itworxs-cli ; npx itworxs init"
+Push-Location itworxs-cli
+npx itworxs init
+Pop-Location
