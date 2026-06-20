@@ -20,7 +20,7 @@ const FRONTENDS: Choice[] = [
 ];
 
 const BACKENDS: Choice[] = [
-  { value: 'node-express', label: 'Node.js + Express', hint: 'basis API-server' },
+  { value: 'node-express', label: 'Node.js + Express', hint: 'TypeScript, basis API-server' },
   { value: 'none', label: 'Geen', hint: 'geen backend' },
 ];
 
@@ -53,9 +53,11 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
   }
 
   if (dryRun) {
-    if (frontendChoice === 'nextjs') p.note(nextjsNote(projectRoot), 'Frontend: Next.js + TailwindCSS');
+    if (frontendChoice === 'nextjs') {
+      p.note(`map: ${path.join(projectRoot, 'frontend')}\nNext.js + TailwindCSS + Prettier (laatste versies)`, 'Frontend');
+    }
     if (backendChoice === 'node-express') {
-      p.note(`map: ${path.join(projectRoot, 'backend')}\nbasis Node.js + Express + npm install express@latest`, 'Backend: Node.js + Express');
+      p.note(`map: ${path.join(projectRoot, 'backend')}\nNode.js + Express in TypeScript + Prettier`, 'Backend');
     }
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
@@ -65,10 +67,10 @@ export async function runInit({ dryRun = false, frontend, backend }: InitOptions
   let failed = false;
 
   if (frontendChoice === 'nextjs') {
-    (await setupNextjs(projectRoot)) ? done.push('frontend/ (Next.js + Tailwind)') : (failed = true);
+    (await setupNextjs(projectRoot)) ? done.push('frontend/ (Next.js + Tailwind + Prettier)') : (failed = true);
   }
   if (!failed && backendChoice === 'node-express') {
-    (await setupNodeExpress(projectRoot)) ? done.push('backend/ (Node.js + Express)') : (failed = true);
+    (await setupNodeExpress(projectRoot)) ? done.push('backend/ (Express + TypeScript + Prettier)') : (failed = true);
   }
 
   if (failed) {
@@ -92,10 +94,6 @@ async function pick(message: string, options: Choice[], preset?: string): Promis
 
 // --- Next.js -------------------------------------------------------------
 
-function nextjsNote(projectRoot: string): string {
-  return `map: ${path.join(projectRoot, 'frontend')}\ncmd: npx create-next-app@latest frontend --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes`;
-}
-
 async function setupNextjs(projectRoot: string): Promise<boolean> {
   const dir = path.join(projectRoot, 'frontend');
   if (await dirHasContent(dir)) {
@@ -106,10 +104,15 @@ async function setupNextjs(projectRoot: string): Promise<boolean> {
   const command =
     'npx create-next-app@latest frontend ' +
     '--ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes';
-  return (await runInShell(command, projectRoot)) === 0;
+  if ((await runInShell(command, projectRoot)) !== 0) return false;
+
+  p.log.step('Prettier toevoegen aan frontend/ ...');
+  await fs.writeFile(path.join(dir, '.prettierrc'), PRETTIERRC_FRONTEND);
+  await addFormatScript(dir);
+  return (await runInShell('npm install -D prettier prettier-plugin-tailwindcss --no-audit --no-fund', dir)) === 0;
 }
 
-// --- Node.js + Express ----------------------------------------------------
+// --- Node.js + Express (TypeScript) --------------------------------------
 
 async function setupNodeExpress(projectRoot: string): Promise<boolean> {
   const dir = path.join(projectRoot, 'backend');
@@ -117,7 +120,7 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
     p.log.error(`Map 'backend' bestaat al en is niet leeg: ${dir}`);
     return false;
   }
-  p.log.step('Node.js + Express opzetten in backend/ ...');
+  p.log.step('Node.js + Express (TypeScript) opzetten in backend/ ...');
 
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
 
@@ -125,37 +128,102 @@ async function setupNodeExpress(projectRoot: string): Promise<boolean> {
     name: 'backend',
     version: '1.0.0',
     type: 'module',
-    main: 'src/index.js',
+    main: 'dist/index.js',
     scripts: {
-      start: 'node src/index.js',
-      dev: 'node --watch src/index.js',
+      dev: 'tsx watch src/index.ts',
+      build: 'tsc',
+      start: 'node dist/index.js',
+      format: 'prettier --write .',
     },
   };
   await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
-  await fs.writeFile(path.join(dir, 'src', 'index.js'), EXPRESS_SERVER);
-  await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\n.env\n');
+  await fs.writeFile(path.join(dir, 'tsconfig.json'), TSCONFIG_BACKEND);
+  await fs.writeFile(path.join(dir, 'src', 'index.ts'), EXPRESS_SERVER_TS);
+  await fs.writeFile(path.join(dir, '.prettierrc'), PRETTIERRC_BACKEND);
+  await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\ndist/\n.env\n');
 
-  // express in de laatste versie installeren (stil, zonder audit/funding-ruis)
-  return (await runInShell('npm install express@latest --no-audit --no-fund', dir)) === 0;
+  if ((await runInShell('npm install express --no-audit --no-fund', dir)) !== 0) return false;
+  return (
+    (await runInShell(
+      'npm install -D typescript tsx @types/express @types/node prettier --no-audit --no-fund',
+      dir,
+    )) === 0
+  );
 }
 
-const EXPRESS_SERVER = `import express from 'express';
+// --- templates ------------------------------------------------------------
 
-const app = express();
-const port = process.env.PORT ?? 3001;
+const EXPRESS_SERVER_TS = `import express from 'express'
+import type { Request, Response } from 'express'
 
-app.use(express.json());
+const app = express()
+const port = process.env.PORT ?? 3001
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Hallo vanuit de ItWorXs backend!' });
-});
+app.use(express.json())
+
+app.get('/', (_req: Request, res: Response) => {
+    res.json({ message: 'Hallo vanuit de ItWorXs backend!' })
+})
 
 app.listen(port, () => {
-  console.log(\`Backend draait op http://localhost:\${port}\`);
-});
+    console.log('Backend draait op http://localhost:' + port)
+})
+`;
+
+const TSCONFIG_BACKEND = `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src"]
+}
+`;
+
+// Jouw Prettier-config. Frontend incl. de tailwind-plugin, backend zonder.
+const PRETTIERRC_FRONTEND = `{
+    "arrowParens": "avoid",
+    "singleQuote": true,
+    "jsxSingleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "none",
+    "semi": false,
+    "proseWrap": "always",
+    "printWidth": 80,
+    "plugins": ["prettier-plugin-tailwindcss"]
+}
+`;
+
+const PRETTIERRC_BACKEND = `{
+    "arrowParens": "avoid",
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "none",
+    "semi": false,
+    "proseWrap": "always",
+    "printWidth": 80
+}
 `;
 
 // --- helpers --------------------------------------------------------------
+
+/** Voeg een 'format'-script toe aan een bestaande package.json (niet kritisch). */
+async function addFormatScript(dir: string): Promise<void> {
+  const pkgPath = path.join(dir, 'package.json');
+  try {
+    const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8')) as { scripts?: Record<string, string> };
+    pkg.scripts = { ...(pkg.scripts ?? {}), format: 'prettier --write .' };
+    await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  } catch {
+    // package.json niet leesbaar - format-script overslaan
+  }
+}
 
 // npm-omgeving die de ruis stilzet (audit, funding, warnings) en telemetry uitschakelt.
 function quietEnv(): NodeJS.ProcessEnv {

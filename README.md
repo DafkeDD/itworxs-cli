@@ -38,8 +38,8 @@ bevestiging — het draait meteen):
 
 | Keuze | Resultaat |
 |-------|-----------|
-| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, nieuwste) |
-| **Node.js + Express** | map `backend/` met een basis Express-server + `express@latest` |
+| **Next.js** | map `frontend/` via `create-next-app@latest` (Next.js + TailwindCSS, TypeScript) + Prettier (met `prettier-plugin-tailwindcss`) |
+| **Node.js + Express** | map `backend/` met een **TypeScript** Express-server (`tsx` + `tsc`) + Prettier |
 
 ```
 mijn-project/
