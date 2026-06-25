@@ -41,6 +41,11 @@ const UIUX_CHOICES: Choice[] = [
   { value: 'yes', label: 'Ja', hint: 'ui-ux-pro-max (extern, vereist Python 3)' },
 ];
 
+const PGSKILLS_CHOICES: Choice[] = [
+  { value: 'no', label: 'Nee', hint: 'geen Postgres-skill' },
+  { value: 'yes', label: 'Ja', hint: 'neondatabase/postgres-skills (best practices)' },
+];
+
 export interface InitOptions {
   dryRun?: boolean;
   frontend?: string;
@@ -48,6 +53,7 @@ export interface InitOptions {
   database?: string;
   repo?: string;
   design?: string;
+  pgSkills?: string;
 }
 
 function resolveProjectRoot(): string {
@@ -56,7 +62,7 @@ function resolveProjectRoot(): string {
   return cwd;
 }
 
-export async function runInit({ dryRun = false, frontend, backend, database, repo, design }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
@@ -89,6 +95,13 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
     uiuxChoice = choice;
   }
 
+  let pgSkillsChoice = 'no';
+  if (databaseChoice === 'postgresql') {
+    const choice = await pick('Postgres best-practices skill toevoegen?', PGSKILLS_CHOICES, pgSkills);
+    if (choice === undefined) return;
+    pgSkillsChoice = choice;
+  }
+
   if (dryRun) {
     if (frontendChoice === 'nextjs') {
       p.note(`map: ${path.join(projectRoot, 'frontend')}\nNext.js + TailwindCSS + next-intl (i18n) + Prettier`, 'Frontend');
@@ -103,6 +116,9 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
     p.note('.claude/ met MCP-config, quality-skill en reviewer-agent', 'Claude-tooling');
     if (uiuxChoice === 'yes') {
       p.note('ui-ux-pro-max design-skill via uipro-cli (vereist Python 3)', 'UI/UX');
+    }
+    if (pgSkillsChoice === 'yes') {
+      p.note('postgres-best-practices skill via skills-cli', 'PostgreSQL skill');
     }
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
@@ -132,6 +148,11 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   if (!failed && uiuxChoice === 'yes') {
     await setupUiUx(projectRoot);
     done.push('ui-ux-pro-max design-skill');
+  }
+
+  if (!failed && pgSkillsChoice === 'yes') {
+    await setupPostgresSkills(projectRoot);
+    done.push('postgres-best-practices skill');
   }
 
   if (failed) {
@@ -440,6 +461,15 @@ async function setupUiUx(projectRoot: string): Promise<void> {
     p.log.info('Let op: de ui-ux-pro-max skill vereist Python 3 om te draaien.');
   } else {
     p.log.warn('ui-ux-pro-max installeren is mislukt; je kunt het later draaien met: npx uipro-cli init --ai claude');
+  }
+}
+
+/** Installeert de externe Postgres best-practices skill per project via de skills-cli. */
+async function setupPostgresSkills(projectRoot: string): Promise<void> {
+  p.log.step('Postgres best-practices skill installeren via skills-cli ...');
+  const code = await runInShell('npx -y skills add neondatabase/postgres-skills', projectRoot);
+  if (code !== 0) {
+    p.log.warn('postgres-skills installeren is mislukt; later: npx skills add neondatabase/postgres-skills');
   }
 }
 

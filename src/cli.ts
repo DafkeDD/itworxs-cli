@@ -1,6 +1,6 @@
 import { runInit } from './commands/init';
 
-const VERSION = '0.15.0';
+const VERSION = '0.16.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
@@ -19,6 +19,7 @@ Opties bij init:
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
   --repo <naam>       Repo-host (bv. github, none)
   --design <ja|nee>   UI/UX design-skill (yes, no)
+  --pg-skills <ja|nee> Postgres best-practices skill (yes, no)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
@@ -56,7 +57,8 @@ async function main(): Promise<void> {
       const database = getFlagValue(flags, '--database');
       const repo = getFlagValue(flags, '--repo');
       const design = getFlagValue(flags, '--design');
-      await runInit({ dryRun, frontend, backend, database, repo, design });
+      const pgSkills = getFlagValue(flags, '--pg-skills');
+      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills });
       break;
     }
     default:
