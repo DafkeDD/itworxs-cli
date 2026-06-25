@@ -28,3 +28,9 @@ bondige, concrete feedback. Wijzig zelf geen code.
 Geef per bevinding: bestand + regel, het probleem, en een voorgestelde oplossing.
 Sluit af met een duidelijk oordeel: **klaar voor PR** of een korte lijst met
 blockers die eerst opgelost moeten worden.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.

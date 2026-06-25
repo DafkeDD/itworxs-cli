@@ -142,6 +142,20 @@ token-overhead per sessie laag te houden.
 | `itworxs-db-expert` | PostgreSQL: schema-ontwerp, indexen, query-optimalisatie |
 | `itworxs-gdpr` | GDPR/AVG-doorlichting (EU): PII, consent, bewaartermijnen |
 
+#### Projectgeheugen (`.claude/memory/`)
+
+De agents delen een gecureerde kennisplek die ze **lezen** voor context en **bewust**
+bijwerken — geen automatisch logboek. Drie bestanden:
+
+| Bestand | Inhoud | Beheerd door |
+|---------|--------|--------------|
+| `architecture.md` | stack, structuur, beslissingen, valkuilen, db-schema | architect, explorer, db-expert |
+| `domain.md` | glossarium: afkortingen en projecttermen | iedereen |
+| `data-privacy.md` | PII-inventaris en privacy-aandachtspunten | gdpr |
+
+Bij `itworxs update` worden deze bestanden **nooit overschreven** (seed-once): je
+gecureerde inhoud blijft staan, net als je `HANDOFF.md`.
+
 ### Bestaand project bijwerken
 
 Draai in de root van een bestaand project:

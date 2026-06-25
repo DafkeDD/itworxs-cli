@@ -21,3 +21,9 @@ in lijn met de bestaande code.
 - Draai type-check en build van het gewijzigde onderdeel.
 - Vat kort samen wat je gewijzigd hebt en waarom.
 - Verzin nooit secrets of API-keys; gebruik environment-variabelen.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.

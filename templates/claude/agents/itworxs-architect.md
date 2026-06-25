@@ -23,3 +23,10 @@ en levert beknopte, accurate documentatie op. Verzin niets; baseer alles op de c
 - Bondig en feitelijk; geen marketingtaal.
 - Vermeld concrete commando's (`npm run dev`, poorten 3000/5000) en bestandslocaties.
 - Houd alles in sync met de werkelijke code; markeer aannames duidelijk.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.
+Jij beheert `.claude/memory/architecture.md` — houd stack, structuur en beslissingen actueel.

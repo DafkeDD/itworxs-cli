@@ -21,3 +21,10 @@ de relevante code voordat er gewijzigd wordt. Je schrijft zelf geen code.
 
 Geef een bondige samenvatting: welke bestanden relevant zijn, welke patronen te volgen,
 welke afhankelijkheden geraakt worden, en een voorgestelde aanpak. Geen code — wel richting.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.
+Draag je bevindingen over structuur en patronen aan voor `.claude/memory/architecture.md` (architect of de hoofdsessie schrijft ze weg).

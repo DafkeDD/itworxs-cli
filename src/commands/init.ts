@@ -218,7 +218,7 @@ export async function runUpdate(): Promise<void> {
   const extras = [withPostgres ? 'postgres-MCP' : '', withGithub ? 'github-MCP' : ''].filter(Boolean);
   p.outro(
     chalk.green('Klaar! ') +
-      `.claude/ bijgewerkt${extras.length ? ' (incl. ' + extras.join(' + ') + ')' : ''}. Je HANDOFF.md blijft behouden.`,
+      `.claude/ bijgewerkt${extras.length ? ' (incl. ' + extras.join(' + ') + ')' : ''}. Je HANDOFF.md en memory/ blijven behouden.`,
   );
 }
 
@@ -502,8 +502,27 @@ async function setupGitHubRepo(projectRoot: string, name: string, visibility: st
 async function setupClaude(projectRoot: string, withPostgres: boolean, withGithub: boolean): Promise<void> {
   p.log.step('Claude-tooling toevoegen (.claude/) ...');
   const claudeDir = path.join(projectRoot, '.claude');
-  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
+  // memory/ wordt apart geseed (seed-once) zodat gecureerde inhoud niet wordt overschreven.
+  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, {
+    recursive: true,
+    filter: (src) => {
+      const rel = path.relative(CLAUDE_TEMPLATES_DIR, src);
+      return !rel.split(path.sep).includes('memory');
+    },
+  });
   await fs.writeFile(path.join(claudeDir, 'mcp.json'), buildMcpJson(withPostgres, withGithub));
+  await seedMemory(claudeDir);
+}
+
+/** Kopieert de memory-seedbestanden alleen wanneer ze nog niet bestaan (behoudt gecureerde inhoud). */
+async function seedMemory(claudeDir: string): Promise<void> {
+  const srcMem = path.join(CLAUDE_TEMPLATES_DIR, 'memory');
+  const dstMem = path.join(claudeDir, 'memory');
+  await fs.mkdir(dstMem, { recursive: true });
+  for (const entry of await fs.readdir(srcMem)) {
+    const dst = path.join(dstMem, entry);
+    if (!existsSync(dst)) await fs.copyFile(path.join(srcMem, entry), dst);
+  }
 }
 
 /** Bouwt .claude/mcp.json; voegt een PostgreSQL-server toe wanneer er een Postgres-database is. */

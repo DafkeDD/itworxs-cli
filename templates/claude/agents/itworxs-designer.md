@@ -28,3 +28,9 @@ beknopt design-document. Je schrijft geen productiecode.
 - Bondig en feitelijk; korte secties die echt te lezen zijn.
 - Het design vormt de basis voor de itworxs-plan skill, die het in fases en GitHub issues
   omzet.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.

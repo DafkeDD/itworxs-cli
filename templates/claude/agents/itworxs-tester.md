@@ -21,3 +21,9 @@ die zowel de geslaagde paden als de foutpaden afdekken.
 
 - Draai de tests en zorg dat ze slagen.
 - Rapporteer welke gevallen je hebt afgedekt en welke nog open blijven.
+
+## Projectgeheugen
+
+Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
+voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
+heb je geen schrijfrechten, stel de wijziging dan voor.

@@ -165,7 +165,7 @@ async function runUpdate() {
   await setupClaude(projectRoot, withPostgres, withGithub);
   const extras = [withPostgres ? "postgres-MCP" : "", withGithub ? "github-MCP" : ""].filter(Boolean);
   p.outro(
-    chalk.green("Klaar! ") + `.claude/ bijgewerkt${extras.length ? " (incl. " + extras.join(" + ") + ")" : ""}. Je HANDOFF.md blijft behouden.`
+    chalk.green("Klaar! ") + `.claude/ bijgewerkt${extras.length ? " (incl. " + extras.join(" + ") + ")" : ""}. Je HANDOFF.md en memory/ blijven behouden.`
   );
 }
 async function pick(message, options, preset) {
@@ -398,8 +398,24 @@ async function setupGitHubRepo(projectRoot, name, visibility) {
 async function setupClaude(projectRoot, withPostgres, withGithub) {
   p.log.step("Claude-tooling toevoegen (.claude/) ...");
   const claudeDir = path.join(projectRoot, ".claude");
-  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
+  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, {
+    recursive: true,
+    filter: (src) => {
+      const rel = path.relative(CLAUDE_TEMPLATES_DIR, src);
+      return !rel.split(path.sep).includes("memory");
+    }
+  });
   await fs.writeFile(path.join(claudeDir, "mcp.json"), buildMcpJson(withPostgres, withGithub));
+  await seedMemory(claudeDir);
+}
+async function seedMemory(claudeDir) {
+  const srcMem = path.join(CLAUDE_TEMPLATES_DIR, "memory");
+  const dstMem = path.join(claudeDir, "memory");
+  await fs.mkdir(dstMem, { recursive: true });
+  for (const entry of await fs.readdir(srcMem)) {
+    const dst = path.join(dstMem, entry);
+    if (!existsSync(dst)) await fs.copyFile(path.join(srcMem, entry), dst);
+  }
 }
 function buildMcpJson(withPostgres, withGithub) {
   const mcpServers = {
@@ -971,7 +987,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.28.0";
+var VERSION = "0.29.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
