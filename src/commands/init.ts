@@ -538,7 +538,7 @@ export default async function LocaleLayout({
             <head>
                 <script dangerouslySetInnerHTML={{ __html: themeScript }} />
             </head>
-            <body>
+            <body className="flex min-h-screen flex-col">
                 <ThemeProvider>
                     <NextIntlClientProvider>
                         <header className="flex items-center justify-between p-4">
@@ -574,7 +574,7 @@ export default function HomePage({
     const t = useTranslations('home')
 
     return (
-        <main className="p-8">
+        <main className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
             <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p>{t('welcomeMessage')}</p>
         </main>
