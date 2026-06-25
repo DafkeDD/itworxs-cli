@@ -614,9 +614,6 @@ import ThemeSwitcher from '@/components/ThemeSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import '../globals.css'
 
-const themeScript =
-    "(function(){try{var t=localStorage.getItem('itworxs-theme')||'system';var d=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',d)}catch(e){}})()"
-
 export function generateStaticParams() {
     return routing.locales.map(locale => ({ locale }))
 }
@@ -635,9 +632,6 @@ export default async function LocaleLayout({
 
     return (
         <html lang={locale} suppressHydrationWarning>
-            <head>
-                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-            </head>
             <body className="flex min-h-screen flex-col">
                 <ThemeProvider>
                     <NextIntlClientProvider>
@@ -735,6 +729,18 @@ const GLOBALS_CSS = `@import "tailwindcss";
     --text-2: #9aa3b2;
     --border: #262b34;
     --accent: #2dd4bf;
+}
+
+/* Volg de OS-voorkeur voor JS (geen flits voor 'system'); expliciete keuze wint. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #0a0c10;
+        --surface: #14171d;
+        --text: #e6e9ef;
+        --text-2: #9aa3b2;
+        --border: #262b34;
+        --accent: #2dd4bf;
+    }
 }
 
 body {
