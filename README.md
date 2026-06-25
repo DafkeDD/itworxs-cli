@@ -43,12 +43,13 @@ bevestiging — het draait meteen):
 
 De Next.js-frontend wordt meteen meertalig opgezet met **next-intl**: een
 `[locale]/` route, `src/i18n/` config, een `proxy.ts`, message-bestanden in
-`src/messages/` (en/nl/fr) en een `LocaleSwitcher`. De talen pas je aan in
+`messages/` (en/nl/fr/de) en een `LocaleSwitcher`. De talen pas je aan in
 `src/i18n/routing.ts`.
 
-Thema-modus (light/dark/system) zit standaard mee via een custom `ThemeProvider` (`data-theme` + CSS-variabelen): een
-`ThemeProvider`, een `ThemeSwitcher` in de header, en class-based dark mode in
-Tailwind. Het systeem-thema volgt automatisch de OS-voorkeur.
+Thema-modus (light/dark/system) zit standaard mee via een custom `ThemeProvider`
+(`data-theme` + CSS-variabelen): een `ThemeProvider`, een `ThemeSwitcher` in de
+header, en class-based dark mode in Tailwind. Het systeem-thema volgt automatisch de
+OS-voorkeur.
 
 ```
 mijn-project/
@@ -94,6 +95,47 @@ GitHub CLI `gh`, ingelogd):
 - **itworxs-ship** — bouwt fase per fase (implementeren, testen, quality-gate, commit,
   PR), vinkt taken/fases af in de issues en sluit ze. Eén checkpoint per fase.
 
+### Claude-tooling (`.claude/`)
+
+Elk project krijgt een `.claude/`-map met skills, expert-agents, een MCP-config en een
+session-handoff. De MCP-servers worden afgestemd op je keuzes (postgres bij een database,
+github bij een GitHub-repo). Beschrijvingen zijn bewust kort gehouden om de
+token-overhead per sessie laag te houden.
+
+**Skills (16)** — taakgerichte workflows:
+
+| Skill | Doel |
+|-------|------|
+| `itworxs-scaffold` | Nieuwe onderdelen volgens de bestaande structuur aanmaken |
+| `itworxs-component` | React/Next.js-component (Tailwind, react-icons, next-intl, a11y) |
+| `itworxs-i18n` | Vertalingen toevoegen / talen synchroniseren (frontend + backend) |
+| `itworxs-auth` | Veilige authenticatie (JWT/sessies + optioneel OAuth) |
+| `itworxs-migrations` | Postgres-migraties (raw `pg`, geen ORM) |
+| `itworxs-quality` | Quality-gate: lint, type-check, format-check, build |
+| `itworxs-security` | Secrets, kwetsbare deps en ontbrekende validatie opsporen |
+| `itworxs-a11y` | WCAG-toegankelijkheidscheck van de frontend |
+| `itworxs-performance` | Lighthouse/Core Web Vitals + backend query-/load-knelpunten |
+| `itworxs-e2e` | Playwright end-to-end tests |
+| `itworxs-deploy` | Dockerfiles + docker-compose genereren |
+| `itworxs-commit` | Quality-gate → conventional commit → PR via `gh` |
+| `itworxs-handoff` | Session-handoff bijwerken (`.claude/HANDOFF.md`) |
+| `itworxs-plan` | Feature in fases splitsen → GitHub issues (epic + issue per fase) |
+| `itworxs-ship` | Plan fase per fase bouwen en de issues bijwerken/sluiten |
+| `itworxs-feature` | Volledig traject van plan tot opgeleverde code |
+
+**Agents (8)** — specialisten die in hun eigen context werken:
+
+| Agent | Rol |
+|-------|-----|
+| `itworxs-explorer` | Codebase verkennen en in kaart brengen vóór een wijziging |
+| `itworxs-designer` | `design.md` opstellen voor een feature |
+| `itworxs-architect` | Architectuur-/onboardingdocumentatie (README + Mermaid) |
+| `itworxs-developer` | Features implementeren volgens de projectpatronen |
+| `itworxs-tester` | Tests schrijven (happy + failure paths) |
+| `itworxs-reviewer` | Wijzigingen reviewen tegen de projectstandaarden |
+| `itworxs-db-expert` | PostgreSQL: schema-ontwerp, indexen, query-optimalisatie |
+| `itworxs-gdpr` | GDPR/AVG-doorlichting (EU): PII, consent, bewaartermijnen |
+
 ### Bestaand project bijwerken
 
 Draai in de root van een bestaand project:
@@ -120,8 +162,8 @@ npx github:DafkeDD/itworxs-cli version    # toon versie
 git clone https://github.com/DafkeDD/itworxs-cli.git
 cd itworxs-cli
 
-npm install            # installeert deps + bouwt dist (prepare-script)
-npm run build          # eenmalig bouwen
+npm install            # installeert deps
+npm run build          # bouwt dist/ (wordt mee gecommit)
 npm run typecheck      # alleen types controleren
 node dist/cli.js help  # lokaal draaien
 ```
@@ -131,7 +173,8 @@ node dist/cli.js help  # lokaal draaien
 ```
 src/cli.ts             # entrypoint (argument parsing)
 src/commands/init.ts   # init command (wizard + frontend install)
-dist/                  # build-output (gegenereerd, niet in git)
+dist/                  # build-output (mee gecommit, zodat npx werkt)
+templates/claude/      # .claude-tooling (skills, agents, scripts) voor projecten
 tsup.config.ts         # bundler-config
 tsconfig.json          # TypeScript-config
 package.json           # bin-veld maakt 'itworxs' command aan
