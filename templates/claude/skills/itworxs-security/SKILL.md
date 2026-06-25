@@ -1,6 +1,6 @@
 ---
 name: itworxs-security
-description: Beveiligingscontrole voor een ItWorXs-project. Zoekt naar secrets in de code, kwetsbare dependencies en ontbrekende validatie. Gebruik voor een release of wanneer de gebruiker een security-check vraagt.
+description: Security-check: secrets in code, kwetsbare dependencies en ontbrekende validatie. Gebruik voor een release of een security-controle.
 ---
 
 # ItWorXs Security Check

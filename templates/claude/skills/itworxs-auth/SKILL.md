@@ -1,6 +1,6 @@
 ---
 name: itworxs-auth
-description: Zet veilige authenticatie op in de Express-backend van een ItWorXs-project — sessies/JWT en optioneel OAuth (Google, Microsoft, Azure, GitHub), aansluitend op de JWT_SECRET/OAUTH_* variabelen in .env.example. Gebruik wanneer login of beveiligde routes nodig zijn.
+description: Veilige authenticatie in de Express-backend: JWT/sessies en optioneel OAuth (Google, Microsoft, Azure, GitHub) via JWT_SECRET/OAUTH_*. Gebruik voor login of beveiligde routes.
 ---
 
 # ItWorXs Auth

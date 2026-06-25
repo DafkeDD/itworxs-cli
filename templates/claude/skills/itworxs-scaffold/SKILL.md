@@ -1,6 +1,6 @@
 ---
 name: itworxs-scaffold
-description: Genereer snel nieuwe onderdelen in een ItWorXs-project volgens de bestaande structuur — een backend-route met controller en service, of een frontend-pagina of component. Gebruik wanneer de gebruiker iets nieuws wil aanmaken.
+description: Genereer nieuwe onderdelen volgens de bestaande structuur — backend-route met controller+service, of frontend-pagina/component. Gebruik om iets nieuws aan te maken.
 ---
 
 # ItWorXs Scaffold

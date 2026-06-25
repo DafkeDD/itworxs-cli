@@ -1,6 +1,6 @@
 ---
 name: itworxs-e2e
-description: Schrijf en draai Playwright end-to-end tests voor de Next.js-frontend van een ItWorXs-project. Gebruik om gebruikersflows te testen (navigatie, taalwissel, thema, formulieren).
+description: Schrijf en draai Playwright e2e-tests voor de Next.js-frontend (navigatie, taalwissel, thema, formulieren).
 ---
 
 # ItWorXs E2E (Playwright)

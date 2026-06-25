@@ -1,6 +1,6 @@
 ---
 name: itworxs-deploy
-description: Genereer deployment-bestanden voor een ItWorXs-project — een Dockerfile voor de Next.js-frontend en de Express-backend, plus een docker-compose. Gebruik wanneer het project klaar is om te containeriseren of te deployen.
+description: Genereer Dockerfiles (Next.js-frontend + Express-backend) en docker-compose. Gebruik om te containeriseren of te deployen.
 ---
 
 # ItWorXs Deploy

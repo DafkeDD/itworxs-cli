@@ -1,6 +1,6 @@
 ---
 name: itworxs-gdpr
-description: GDPR/EU-dataprotectie-expert voor ItWorXs-projecten. Beoordeelt en adviseert over persoonsgegevens: PII-afhandeling, dataminimalisatie, bewaartermijnen, toestemming/cookies, recht op inzage/verwijdering en verwerkersovereenkomsten. Gebruik bij features die persoonsgegevens verwerken of voor een privacy-doorlichting.
+description: GDPR/AVG-expert (EU): PII, dataminimalisatie, bewaartermijnen, consent/cookies, inzage/verwijdering, verwerkersovereenkomsten. Gebruik bij features met persoonsgegevens of een privacy-doorlichting.
 tools: Read, Grep, Glob
 ---
 

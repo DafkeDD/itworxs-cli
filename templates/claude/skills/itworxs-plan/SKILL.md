@@ -1,6 +1,6 @@
 ---
 name: itworxs-plan
-description: Maak een implementatieplan voor een feature in een ItWorXs-project, splits het in fases, en maak er GitHub issues van — een epic met fase-checklist plus een issue per fase. Gebruik wanneer de gebruiker een feature wil plannen of opdelen voordat er gebouwd wordt.
+description: Maak een implementatieplan, splits in fases en maak GitHub issues (epic + issue per fase). Gebruik om een feature te plannen vóór het bouwen.
 ---
 
 # ItWorXs Plan

@@ -1,6 +1,6 @@
 ---
 name: itworxs-component
-description: Maak een nieuw React/Next.js-component in een ItWorXs-frontend. Bouwt het component met TailwindCSS, react-icons, next-intl-teksten en aandacht voor toegankelijkheid en de client/server-grens. Gebruik wanneer de gebruiker een UI-component wil bouwen.
+description: Bouw een React/Next.js-component met TailwindCSS, react-icons, next-intl en toegankelijkheid (client/server-grens). Gebruik voor een nieuwe UI-component.
 ---
 
 # ItWorXs Component

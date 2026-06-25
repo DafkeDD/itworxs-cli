@@ -1,6 +1,6 @@
 ---
 name: itworxs-db-expert
-description: Database-expert (PostgreSQL) voor ItWorXs-projecten. Ontwerpt en beoordeelt schema's, indexen en queries en spoort performanceproblemen en valkuilen op. Gebruik bij het ontwerpen van een datamodel, het toevoegen van tabellen of queries, of bij trage queries.
+description: PostgreSQL-expert: ontwerpt/beoordeelt schema's, indexen en queries en spoort knelpunten op. Gebruik bij datamodel-ontwerp, nieuwe tabellen/queries of trage queries.
 tools: Read, Grep, Glob, Bash
 ---
 

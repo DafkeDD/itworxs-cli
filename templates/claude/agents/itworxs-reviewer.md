@@ -1,6 +1,6 @@
 ---
 name: itworxs-reviewer
-description: Reviewt wijzigingen in een ItWorXs-project tegen de projectstandaarden. Gebruik dit voor een zelf-review vóór een pull request.
+description: Reviewt wijzigingen tegen de projectstandaarden. Gebruik voor een zelf-review vóór een PR.
 tools: Read, Grep, Glob, Bash
 ---
 

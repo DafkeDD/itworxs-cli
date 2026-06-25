@@ -1,6 +1,6 @@
 ---
 name: itworxs-ship
-description: Voer een ItWorXs-plan fase per fase uit op basis van de GitHub issues uit itworxs-plan. Per fase: implementeren, testen, quality-gate, commit, PR, en de issues bijwerken. Gebruik wanneer de gebruiker het geplande werk wil laten bouwen.
+description: Voer een itworxs-plan fase per fase uit op de GitHub issues: implementeren, testen, quality-gate, commit, PR, issues bijwerken. Gebruik om gepland werk te bouwen.
 ---
 
 # ItWorXs Ship

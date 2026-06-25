@@ -1,6 +1,6 @@
 ---
 name: itworxs-a11y
-description: Toegankelijkheidscontrole (WCAG) voor de Next.js-frontend van een ItWorXs-project. Controleer kleurcontrast, focus-states, labels, semantiek en toetsenbordnavigatie. Gebruik voor oplevering of wanneer de gebruiker vraagt naar toegankelijkheid.
+description: WCAG-toegankelijkheidscheck van de Next.js-frontend (contrast, focus, labels, semantiek, toetsenbord). Gebruik bij oplevering of een a11y-vraag.
 ---
 
 # ItWorXs Accessibility (a11y)

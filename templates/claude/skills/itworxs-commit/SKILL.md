@@ -1,6 +1,6 @@
 ---
 name: itworxs-commit
-description: Maak een nette commit en pull request voor een ItWorXs-project. Draait eerst de quality-gate, schrijft een conventional commit-bericht en opent een PR via de GitHub CLI. Gebruik wanneer werk klaar is om in te dienen.
+description: Nette commit + PR: draait de quality-gate, schrijft een conventional commit en opent een PR via GitHub CLI. Gebruik wanneer werk klaar is om in te dienen.
 ---
 
 # ItWorXs Commit & PR

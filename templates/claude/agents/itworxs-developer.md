@@ -1,6 +1,6 @@
 ---
 name: itworxs-developer
-description: Implementeert features in een ItWorXs-project volgens de bestaande patronen en projectstandaarden. Gebruik om een taak of feature uit te werken in de frontend (Next.js) of backend (Express).
+description: Implementeert features volgens de bestaande patronen en standaarden, in frontend (Next.js) of backend (Express).
 tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 

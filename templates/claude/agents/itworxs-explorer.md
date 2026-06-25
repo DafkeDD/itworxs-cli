@@ -1,6 +1,6 @@
 ---
 name: itworxs-explorer
-description: Verkent de codebase van een ItWorXs-project en mapt structuur, patronen en dependencies vóór een wijziging. Gebruik dit als eerste stap voor een grotere taak, of om snel inzicht te krijgen in onbekende code.
+description: Verkent de codebase en mapt structuur, patronen en dependencies vóór een wijziging. Gebruik als eerste stap bij een grotere of onbekende taak.
 tools: Read, Grep, Glob, Bash
 ---
 

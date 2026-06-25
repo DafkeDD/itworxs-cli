@@ -1,6 +1,6 @@
 ---
 name: itworxs-performance
-description: Performance-controle voor een ItWorXs-project — Lighthouse/Core Web Vitals voor de Next.js-frontend en query-/load-aandachtspunten voor de Express-backend. Gebruik voor een release of wanneer iets traag aanvoelt.
+description: Performance-check: Lighthouse/Core Web Vitals (frontend) en query-/load-knelpunten (backend). Gebruik voor een release of bij traagheid.
 ---
 
 # ItWorXs Performance

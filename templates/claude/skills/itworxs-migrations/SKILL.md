@@ -1,6 +1,6 @@
 ---
 name: itworxs-migrations
-description: Beheer Postgres-databasemigraties in een ItWorXs-backend (raw pg, geen ORM). Maak en pas migratiebestanden toe en houd het schema in versiebeheer. Gebruik bij een schemawijziging.
+description: Beheer Postgres-migraties (raw pg, geen ORM): maak/pas migratiebestanden toe en houd het schema in versiebeheer. Gebruik bij een schemawijziging.
 ---
 
 # ItWorXs DB Migrations

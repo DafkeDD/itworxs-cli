@@ -1,6 +1,6 @@
 ---
 name: itworxs-feature
-description: Voer het volledige ItWorXs-traject voor een feature uit — van plan tot opgeleverde code. Plant de feature in fases met GitHub issues en bouwt ze daarna fase per fase. Gebruik wanneer de gebruiker een feature van A tot Z wil laten plannen en bouwen.
+description: Volledig feature-traject van plan tot opgeleverde code: plant in fases met GitHub issues en bouwt fase per fase. Gebruik om een feature van A tot Z te laten plannen en bouwen.
 ---
 
 # ItWorXs Feature (plan -> ship)

@@ -1,6 +1,6 @@
 ---
 name: itworxs-handoff
-description: Werk de session-handoff van een ItWorXs-project bij (.claude/HANDOFF.md). Noteer waar je aan werkt, de volgende stappen en belangrijke beslissingen, zodat een volgende Claude-sessie verdergaat zonder context te verliezen. Gebruik op het einde van een werksessie of bij een grote mijlpaal.
+description: Werk de session-handoff bij (.claude/HANDOFF.md): huidig werk, volgende stappen, beslissingen. Gebruik aan het einde van een sessie of bij een mijlpaal.
 ---
 
 # ItWorXs Session Handoff

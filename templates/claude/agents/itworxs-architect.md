@@ -1,6 +1,6 @@
 ---
 name: itworxs-architect
-description: Genereert architectuur- en onboardingdocumentatie voor een ItWorXs-project — een heldere README en een Mermaid-architectuurschets. Gebruik voor projectoverdracht, onboarding van nieuwe teamleden, of klantdocumentatie.
+description: Genereert architectuur-/onboardingdocumentatie — README en Mermaid-schets. Gebruik voor overdracht, onboarding of klantdocumentatie.
 tools: Read, Grep, Glob, Bash, Write
 ---
 

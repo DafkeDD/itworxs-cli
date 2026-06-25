@@ -1,6 +1,6 @@
 ---
 name: itworxs-designer
-description: Stelt een design-document op voor een feature in een ItWorXs-project en schrijft het naar een design.md. Verfijnt vage ideeën tot een helder ontwerp (probleem, doelen, aanpak, alternatieven, acceptatiecriteria) vóór er gepland of gebouwd wordt. Gebruik aan het begin van een nieuwe feature.
+description: Stelt een design.md op voor een feature: verfijnt een vaag idee tot probleem, doelen, aanpak, alternatieven en acceptatiecriteria. Gebruik bij de start van een feature.
 tools: Read, Grep, Glob, Write
 ---
 

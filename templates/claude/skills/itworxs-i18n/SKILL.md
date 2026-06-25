@@ -1,6 +1,6 @@
 ---
 name: itworxs-i18n
-description: Voeg vertalingen toe of synchroniseer de talen van een ItWorXs-project. Houdt de frontend (next-intl) en de backend op dezelfde talenlijst. Gebruik bij het toevoegen van een taal, een nieuwe vertaalsleutel, of het opsporen van ontbrekende vertalingen.
+description: Voeg vertalingen toe of synchroniseer talen (next-intl frontend + backend op dezelfde talenlijst). Gebruik bij een nieuwe taal, vertaalsleutel of ontbrekende vertalingen.
 ---
 
 # ItWorXs i18n

@@ -1,6 +1,6 @@
 ---
 name: itworxs-quality
-description: Kwaliteitspoort voor een ItWorXs-project. Lint, type-check, formatteer-check en build van de frontend (Next.js) en backend (Express). Gebruik dit voor een commit of pull request, of wanneer de gebruiker vraagt om de code te controleren.
+description: Quality-gate: lint, type-check, format-check en build van frontend en backend. Gebruik voor een commit/PR of een code-controle.
 ---
 
 # ItWorXs Quality Gate

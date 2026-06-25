@@ -1,6 +1,6 @@
 ---
 name: itworxs-tester
-description: Schrijft tests voor een ItWorXs-project — zowel happy paths als failure paths. Gebruik om testdekking toe te voegen voor nieuwe of bestaande code.
+description: Schrijft tests (happy + failure paths). Gebruik om testdekking toe te voegen voor nieuwe of bestaande code.
 tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 
