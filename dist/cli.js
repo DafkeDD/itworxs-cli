@@ -4,9 +4,12 @@
 import path from "path";
 import { promises as fs } from "fs";
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 import * as p from "@clack/prompts";
 import chalk from "chalk";
 var INSTALL_DIR_NAME = "itworxs-cli";
+var moduleDir = path.dirname(fileURLToPath(import.meta.url));
+var CLAUDE_TEMPLATES_DIR = path.resolve(moduleDir, "../templates/claude");
 var FRONTENDS = [
   { value: "nextjs", label: "Next.js", hint: "TypeScript, TailwindCSS, next-intl, Prettier" },
   { value: "none", label: "Geen", hint: "geen frontend" }
@@ -61,6 +64,7 @@ Database: ${dbLine}`, "Backend");
     if (repoChoice === "github") {
       p.note("GitHub Actions CI -> .github/workflows/ci.yml", "Repository");
     }
+    p.note(".claude/ met MCP-config, quality-skill en reviewer-agent", "Claude-tooling");
     p.outro(chalk.yellow("dry-run: niets uitgevoerd"));
     return;
   }
@@ -75,6 +79,10 @@ Database: ${dbLine}`, "Backend");
   if (!failed && repoChoice === "github") {
     await setupGitHub(projectRoot, frontendChoice === "nextjs", backendChoice === "node-express");
     done.push(".github/workflows/ci.yml");
+  }
+  if (!failed) {
+    await setupClaude(projectRoot);
+    done.push(".claude/ (MCP + quality-skill + reviewer-agent)");
   }
   if (failed) {
     p.outro(chalk.red("Setup gestopt door een fout."));
@@ -281,6 +289,10 @@ async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
   const dir = path.join(projectRoot, ".github", "workflows");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "ci.yml"), buildCiYaml(hasFrontend, hasBackend));
+}
+async function setupClaude(projectRoot) {
+  p.log.step("Claude-tooling toevoegen (.claude/) ...");
+  await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, ".claude"), { recursive: true });
 }
 function buildCiYaml(hasFrontend, hasBackend) {
   const job = (name, dir) => `  ${name}:
@@ -793,7 +805,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.11.0";
+var VERSION = "0.12.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

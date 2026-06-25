@@ -1,10 +1,14 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 
 const INSTALL_DIR_NAME = 'itworxs-cli';
+
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const CLAUDE_TEMPLATES_DIR = path.resolve(moduleDir, '../templates/claude');
 
 interface Choice {
   value: string;
@@ -83,6 +87,7 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
     if (repoChoice === 'github') {
       p.note('GitHub Actions CI -> .github/workflows/ci.yml', 'Repository');
     }
+    p.note('.claude/ met MCP-config, quality-skill en reviewer-agent', 'Claude-tooling');
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
   }
@@ -101,6 +106,11 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   if (!failed && repoChoice === 'github') {
     await setupGitHub(projectRoot, frontendChoice === 'nextjs', backendChoice === 'node-express');
     done.push('.github/workflows/ci.yml');
+  }
+
+  if (!failed) {
+    await setupClaude(projectRoot);
+    done.push('.claude/ (MCP + quality-skill + reviewer-agent)');
   }
 
   if (failed) {
@@ -354,6 +364,12 @@ async function setupGitHub(
   const dir = path.join(projectRoot, '.github', 'workflows');
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, 'ci.yml'), buildCiYaml(hasFrontend, hasBackend));
+}
+
+/** Kopieert de .claude/ tooling (MCP-config, quality-skill, reviewer-agent) naar het project. */
+async function setupClaude(projectRoot: string): Promise<void> {
+  p.log.step('Claude-tooling toevoegen (.claude/) ...');
+  await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, '.claude'), { recursive: true });
 }
 
 function buildCiYaml(hasFrontend: boolean, hasBackend: boolean): string {
