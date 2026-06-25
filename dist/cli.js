@@ -19,18 +19,16 @@ var DATABASES = [
   { value: "postgresql", label: "PostgreSQL", hint: "aanbevolen (pg + config/db.ts)" },
   { value: "none", label: "Geen", hint: "geen database" }
 ];
-var AUTH_PROVIDERS = [
-  { value: "google", label: "Google", hint: "OAuth" },
-  { value: "microsoft", label: "Microsoft", hint: "persoonlijke accounts" },
-  { value: "azure", label: "Azure AD / Entra", hint: "work / school" },
-  { value: "github", label: "GitHub", hint: "OAuth" }
+var REPO_HOSTS = [
+  { value: "github", label: "GitHub", hint: "GitHub Actions CI" },
+  { value: "none", label: "Geen", hint: "geen repo-config" }
 ];
 function resolveProjectRoot() {
   const cwd = process.cwd();
   if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
   return cwd;
 }
-async function runInit({ dryRun = false, frontend, backend, database, auth } = {}) {
+async function runInit({ dryRun = false, frontend, backend, database, repo } = {}) {
   const projectRoot = resolveProjectRoot();
   p.intro(chalk.bgCyan(chalk.black(" itworxs ")) + " project setup");
   const frontendChoice = await pick("Welke frontend wil je gebruiken?", FRONTENDS, frontend);
@@ -38,19 +36,17 @@ async function runInit({ dryRun = false, frontend, backend, database, auth } = {
   const backendChoice = await pick("Welke backend wil je gebruiken?", BACKENDS, backend);
   if (backendChoice === void 0) return;
   let databaseChoice = "none";
-  let authProviders = [];
   if (backendChoice === "node-express") {
     const db = await pick("Welke database wil je gebruiken?", DATABASES, database);
     if (db === void 0) return;
     databaseChoice = db;
-    const providers = await pickMulti("Welke login-providers wil je voorzien?", AUTH_PROVIDERS, auth);
-    if (providers === void 0) return;
-    authProviders = providers;
   }
   if (frontendChoice === "none" && backendChoice === "none") {
     p.outro(chalk.dim("Niets geselecteerd - niets te doen."));
     return;
   }
+  const repoChoice = await pick("Waar wil je de repository hosten?", REPO_HOSTS, repo);
+  if (repoChoice === void 0) return;
   if (dryRun) {
     if (frontendChoice === "nextjs") {
       p.note(`map: ${path.join(projectRoot, "frontend")}
@@ -58,14 +54,12 @@ Next.js + TailwindCSS + next-intl (i18n) + Prettier`, "Frontend");
     }
     if (backendChoice === "node-express") {
       const dbLine = databaseChoice === "postgresql" ? "PostgreSQL" : "geen";
-      const authLine = authProviders.length ? authProviders.join(", ") : "geen";
-      p.note(
-        `map: ${path.join(projectRoot, "backend")}
+      p.note(`map: ${path.join(projectRoot, "backend")}
 Express (TypeScript)
-Database: ${dbLine}
-Login-providers: ${authLine}`,
-        "Backend"
-      );
+Database: ${dbLine}`, "Backend");
+    }
+    if (repoChoice === "github") {
+      p.note("GitHub Actions CI -> .github/workflows/ci.yml", "Repository");
     }
     p.outro(chalk.yellow("dry-run: niets uitgevoerd"));
     return;
@@ -76,7 +70,11 @@ Login-providers: ${authLine}`,
     await setupNextjs(projectRoot) ? done.push("frontend/ (Next.js + Tailwind + next-intl + Prettier)") : failed = true;
   }
   if (!failed && backendChoice === "node-express") {
-    await setupNodeExpress(projectRoot, databaseChoice, authProviders) ? done.push("backend/ (Express + TypeScript + Prettier)") : failed = true;
+    await setupNodeExpress(projectRoot, databaseChoice) ? done.push("backend/ (Express + TypeScript + Prettier)") : failed = true;
+  }
+  if (!failed && repoChoice === "github") {
+    await setupGitHub(projectRoot, frontendChoice === "nextjs", backendChoice === "node-express");
+    done.push(".github/workflows/ci.yml");
   }
   if (failed) {
     p.outro(chalk.red("Setup gestopt door een fout."));
@@ -88,21 +86,6 @@ Login-providers: ${authLine}`,
 async function pick(message, options, preset) {
   if (preset) return preset;
   const answer = await p.select({ message, options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })) });
-  if (p.isCancel(answer)) {
-    p.cancel("Geannuleerd.");
-    return void 0;
-  }
-  return answer;
-}
-async function pickMulti(message, options, preset) {
-  if (preset !== void 0) {
-    return preset.split(",").map((x) => x.trim()).filter((x) => x.length > 0);
-  }
-  const answer = await p.multiselect({
-    message,
-    options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })),
-    required: false
-  });
   if (p.isCancel(answer)) {
     p.cancel("Geannuleerd.");
     return void 0;
@@ -160,7 +143,7 @@ async function setupTheme(dir) {
   await fs.writeFile(path.join(src, "app", "globals.css"), GLOBALS_CSS);
   return true;
 }
-async function setupNodeExpress(projectRoot, database, authProviders) {
+async function setupNodeExpress(projectRoot, database) {
   const dir = path.join(projectRoot, "backend");
   if (await dirHasContent(dir)) {
     p.log.error(`Map 'backend' bestaat al en is niet leeg: ${dir}`);
@@ -198,9 +181,6 @@ async function setupNodeExpress(projectRoot, database, authProviders) {
   await fs.writeFile(path.join(dir, "src", "services", "logger.ts"), LOGGER_TS);
   if (usePg) {
     await fs.writeFile(path.join(dir, "src", "config", "db.ts"), DB_TS);
-  }
-  if (authProviders.length > 0) {
-    await fs.writeFile(path.join(dir, "src", "config", "auth.ts"), buildAuthTs(authProviders));
   }
   await fs.writeFile(path.join(dir, ".env.example"), ENV_EXAMPLE);
   await fs.writeFile(path.join(dir, ".gitignore"), "node_modules/\ndist/\n.env\n");
@@ -296,17 +276,43 @@ app.listen(env.PORT, () => {
 })
 `;
 }
-function buildAuthTs(providers) {
-  const list = providers.map((x) => `'${x}'`).join(", ");
-  return `// Ingeschakelde login-providers (OAuth). Houd in sync met de OAUTH_* vars in .env.
-export const ENABLED_AUTH_PROVIDERS = [${list}] as const
-
-export type AuthProvider = (typeof ENABLED_AUTH_PROVIDERS)[number]
-
-export const isAuthProvider = (value: unknown): value is AuthProvider =>
-    typeof value === 'string' &&
-    (ENABLED_AUTH_PROVIDERS as readonly string[]).includes(value)
+async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
+  p.log.step("GitHub Actions CI toevoegen (.github/workflows/ci.yml) ...");
+  const dir = path.join(projectRoot, ".github", "workflows");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, "ci.yml"), buildCiYaml(hasFrontend, hasBackend));
+}
+function buildCiYaml(hasFrontend, hasBackend) {
+  const job = (name, dir) => `  ${name}:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${dir}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run build
 `;
+  const jobs = [];
+  if (hasFrontend) jobs.push(job("frontend", "frontend"));
+  if (hasBackend) jobs.push(job("backend", "backend"));
+  const jobsBlock = jobs.length > 0 ? jobs.join("") : `  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Niets te bouwen"
+`;
+  return `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+${jobsBlock}`;
 }
 var TSCONFIG_BACKEND = `{
   "compilerOptions": {
@@ -787,7 +793,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.10.2";
+var VERSION = "0.11.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
@@ -803,7 +809,7 @@ Opties bij init:
   --frontend <naam>   Sla de frontend-vraag over (bv. nextjs, none)
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
-  --auth <lijst>      Login-providers, komma-gescheiden (bv. google,github)
+  --repo <naam>       Repo-host (bv. github, none)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
@@ -834,8 +840,8 @@ async function main() {
       const frontend = getFlagValue(flags, "--frontend");
       const backend = getFlagValue(flags, "--backend");
       const database = getFlagValue(flags, "--database");
-      const auth = getFlagValue(flags, "--auth");
-      await runInit({ dryRun, frontend, backend, database, auth });
+      const repo = getFlagValue(flags, "--repo");
+      await runInit({ dryRun, frontend, backend, database, repo });
       break;
     }
     default:
