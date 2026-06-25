@@ -84,6 +84,16 @@ cd frontend && npm run dev    # frontend op http://localhost:3000
 cd backend  && npm run dev    # backend op http://localhost:3001
 ```
 
+### Plannen & bouwen met GitHub issues
+
+In de `.claude/`-tooling zitten twee skills voor een gefaseerde workflow (vereist de
+GitHub CLI `gh`, ingelogd):
+
+- **itworxs-plan** — verfijnt een feature, splitst ze in fases en maakt GitHub issues:
+  een epic met fase-checklist + een issue per fase.
+- **itworxs-ship** — bouwt fase per fase (implementeren, testen, quality-gate, commit,
+  PR), vinkt taken/fases af in de issues en sluit ze. Eén checkpoint per fase.
+
 ### Bestaand project bijwerken
 
 Draai in de root van een bestaand project:
