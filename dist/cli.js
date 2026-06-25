@@ -900,7 +900,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.18.0";
+var VERSION = "0.19.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

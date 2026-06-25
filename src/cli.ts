@@ -1,6 +1,6 @@
 import { runInit } from './commands/init';
 
-const VERSION = '0.18.0';
+const VERSION = '0.19.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
