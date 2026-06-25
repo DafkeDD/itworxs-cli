@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as p from '@clack/prompts';
@@ -162,6 +163,23 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   }
 
   p.outro(chalk.green('Klaar! ') + (done.length ? `Aangemaakt: ${done.join(', ')}.` : ''));
+}
+
+/** Werkt de .claude/-tooling bij in een bestaand project (zonder frontend/backend te raken). */
+export async function runUpdate(): Promise<void> {
+  const projectRoot = resolveProjectRoot();
+  p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' tooling update');
+
+  const withPostgres = existsSync(path.join(projectRoot, 'backend', 'src', 'config', 'db.ts'));
+  const withGithub = existsSync(path.join(projectRoot, '.github', 'workflows', 'ci.yml'));
+
+  await setupClaude(projectRoot, withPostgres, withGithub);
+
+  const extras = [withPostgres ? 'postgres-MCP' : '', withGithub ? 'github-MCP' : ''].filter(Boolean);
+  p.outro(
+    chalk.green('Klaar! ') +
+      `.claude/ bijgewerkt${extras.length ? ' (incl. ' + extras.join(' + ') + ')' : ''}. Je HANDOFF.md blijft behouden.`,
+  );
 }
 
 async function pick(message: string, options: Choice[], preset?: string): Promise<string | undefined> {

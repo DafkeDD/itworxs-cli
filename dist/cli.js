@@ -3,6 +3,7 @@
 // src/commands/init.ts
 import path from "path";
 import { promises as fs } from "fs";
+import { existsSync } from "fs";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import * as p from "@clack/prompts";
@@ -124,6 +125,17 @@ Database: ${dbLine}`, "Backend");
     return;
   }
   p.outro(chalk.green("Klaar! ") + (done.length ? `Aangemaakt: ${done.join(", ")}.` : ""));
+}
+async function runUpdate() {
+  const projectRoot = resolveProjectRoot();
+  p.intro(chalk.bgCyan(chalk.black(" itworxs ")) + " tooling update");
+  const withPostgres = existsSync(path.join(projectRoot, "backend", "src", "config", "db.ts"));
+  const withGithub = existsSync(path.join(projectRoot, ".github", "workflows", "ci.yml"));
+  await setupClaude(projectRoot, withPostgres, withGithub);
+  const extras = [withPostgres ? "postgres-MCP" : "", withGithub ? "github-MCP" : ""].filter(Boolean);
+  p.outro(
+    chalk.green("Klaar! ") + `.claude/ bijgewerkt${extras.length ? " (incl. " + extras.join(" + ") + ")" : ""}. Je HANDOFF.md blijft behouden.`
+  );
 }
 async function pick(message, options, preset) {
   if (preset) return preset;
@@ -900,7 +912,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.19.0";
+var VERSION = "0.20.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
@@ -909,6 +921,7 @@ Gebruik:
 
 Commands:
   init       Project setup (vraagt frontend en backend)
+  update     Werk de .claude-tooling bij in een bestaand project
   help       Toon deze hulp
   version    Toon de versie
 
@@ -955,6 +968,9 @@ async function main() {
       await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills });
       break;
     }
+    case "update":
+      await runUpdate();
+      break;
     default:
       console.error(`Onbekend command: ${command}
 `);

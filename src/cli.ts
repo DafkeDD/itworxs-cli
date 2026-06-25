@@ -1,6 +1,6 @@
-import { runInit } from './commands/init';
+import { runInit, runUpdate } from './commands/init';
 
-const VERSION = '0.19.0';
+const VERSION = '0.20.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
@@ -10,6 +10,7 @@ Gebruik:
 
 Commands:
   init       Project setup (vraagt frontend en backend)
+  update     Werk de .claude-tooling bij in een bestaand project
   help       Toon deze hulp
   version    Toon de versie
 
@@ -61,6 +62,9 @@ async function main(): Promise<void> {
       await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills });
       break;
     }
+    case 'update':
+      await runUpdate();
+      break;
     default:
       console.error(`Onbekend command: ${command}\n`);
       console.log(HELP);

@@ -84,6 +84,19 @@ cd frontend && npm run dev    # frontend op http://localhost:3000
 cd backend  && npm run dev    # backend op http://localhost:3001
 ```
 
+### Bestaand project bijwerken
+
+Draai in de root van een bestaand project:
+
+```bash
+npx github:DafkeDD/itworxs-cli update
+```
+
+Dit ververst de `.claude/`-tooling (skills, agents, MCP-config, session-handoff) naar
+de laatste versie en raakt je `frontend/`/`backend/`-code niet aan. De CLI detecteert
+zelf of er een PostgreSQL- en/of GitHub-setup is en stemt de MCP-servers daarop af.
+Je eigen `.claude/HANDOFF.md` blijft behouden.
+
 ### Andere commands
 
 ```bash
