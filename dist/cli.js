@@ -35,12 +35,20 @@ var PGSKILLS_CHOICES = [
   { value: "no", label: "Nee", hint: "geen Postgres-skill" },
   { value: "yes", label: "Ja", hint: "neondatabase/postgres-skills (best practices)" }
 ];
+var REPO_CREATE_CHOICES = [
+  { value: "no", label: "Nee", hint: "alleen CI-config, geen repo aanmaken" },
+  { value: "yes", label: "Ja", hint: "maak nu een GitHub-repo aan via de gh CLI" }
+];
+var REPO_VISIBILITY_CHOICES = [
+  { value: "private", label: "Priv\xE9", hint: "aanbevolen" },
+  { value: "public", label: "Publiek", hint: "iedereen kan de repo zien" }
+];
 function resolveProjectRoot() {
   const cwd = process.cwd();
   if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
   return cwd;
 }
-async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills } = {}) {
+async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility } = {}) {
   const projectRoot = resolveProjectRoot();
   p.intro(chalk.bgCyan(chalk.black(" itworxs ")) + " project setup");
   const frontendChoice = await pick("Welke frontend wil je gebruiken?", FRONTENDS, frontend);
@@ -59,6 +67,22 @@ async function runInit({ dryRun = false, frontend, backend, database, repo, desi
   }
   const repoChoice = await pick("Waar wil je de repository hosten?", REPO_HOSTS, repo);
   if (repoChoice === void 0) return;
+  let repoCreateChoice = "no";
+  let repoNameChoice = path.basename(projectRoot);
+  let repoVisibilityChoice = "private";
+  if (repoChoice === "github") {
+    const create = await pick("Een GitHub-repository aanmaken?", REPO_CREATE_CHOICES, repoCreate);
+    if (create === void 0) return;
+    repoCreateChoice = create;
+    if (repoCreateChoice === "yes") {
+      const name = await askText("Naam van de repository?", path.basename(projectRoot), repoName);
+      if (name === void 0) return;
+      repoNameChoice = name;
+      const vis = await pick("Zichtbaarheid van de repository?", REPO_VISIBILITY_CHOICES, repoVisibility);
+      if (vis === void 0) return;
+      repoVisibilityChoice = vis;
+    }
+  }
   let uiuxChoice = "no";
   if (frontendChoice === "nextjs") {
     const choice = await pick("UI/UX design-skill (ui-ux-pro-max) toevoegen?", UIUX_CHOICES, design);
@@ -83,7 +107,9 @@ Express (TypeScript)
 Database: ${dbLine}`, "Backend");
     }
     if (repoChoice === "github") {
-      p.note("GitHub Actions CI -> .github/workflows/ci.yml", "Repository");
+      const repoLine = repoCreateChoice === "yes" ? `
+GitHub-repo aanmaken: ${repoNameChoice} (${repoVisibilityChoice})` : "";
+      p.note(`GitHub Actions CI -> .github/workflows/ci.yml${repoLine}`, "Repository");
     }
     p.note(".claude/ met MCP-config, quality-skill en reviewer-agent", "Claude-tooling");
     if (uiuxChoice === "yes") {
@@ -106,6 +132,11 @@ Database: ${dbLine}`, "Backend");
   if (!failed && repoChoice === "github") {
     await setupGitHub(projectRoot, frontendChoice === "nextjs", backendChoice === "node-express");
     done.push(".github/workflows/ci.yml");
+  }
+  if (!failed && repoChoice === "github" && repoCreateChoice === "yes") {
+    if (await setupGitHubRepo(projectRoot, repoNameChoice, repoVisibilityChoice)) {
+      done.push(`GitHub-repo '${repoNameChoice}' (${repoVisibilityChoice})`);
+    }
   }
   if (!failed) {
     await setupClaude(projectRoot, databaseChoice === "postgresql", repoChoice === "github");
@@ -145,6 +176,16 @@ async function pick(message, options, preset) {
     return void 0;
   }
   return answer;
+}
+async function askText(message, defaultValue, preset) {
+  if (preset !== void 0) return preset;
+  const answer = await p.text({ message, placeholder: defaultValue, defaultValue });
+  if (p.isCancel(answer)) {
+    p.cancel("Geannuleerd.");
+    return void 0;
+  }
+  const value = answer.trim();
+  return value || defaultValue;
 }
 async function setupNextjs(projectRoot) {
   const dir = path.join(projectRoot, "frontend");
@@ -335,6 +376,24 @@ async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
   const dir = path.join(projectRoot, ".github", "workflows");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "ci.yml"), buildCiYaml(hasFrontend, hasBackend));
+}
+async function setupGitHubRepo(projectRoot, name, visibility) {
+  p.log.step(`GitHub-repository aanmaken (${name}, ${visibility}) ...`);
+  if (!existsSync(path.join(projectRoot, ".git"))) {
+    const initCode = await runInShell("git init", projectRoot);
+    if (initCode !== 0) {
+      p.log.warn("git init mislukte; het aanmaken van de repo wordt overgeslagen.");
+      return false;
+    }
+  }
+  const vis = visibility === "public" ? "--public" : "--private";
+  const code = await runInShell(`gh repo create ${name} ${vis} --source=. --remote=origin`, projectRoot);
+  if (code !== 0) {
+    p.log.warn("Repo aanmaken mislukte. Is de GitHub CLI (`gh`) ge\xEFnstalleerd en ingelogd (`gh auth login`)?");
+    p.note(`gh repo create ${name} ${vis} --source=. --remote=origin`, "Handmatig aanmaken");
+    return false;
+  }
+  return true;
 }
 async function setupClaude(projectRoot, withPostgres, withGithub) {
   p.log.step("Claude-tooling toevoegen (.claude/) ...");
@@ -912,7 +971,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.27.0";
+var VERSION = "0.28.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
@@ -930,6 +989,9 @@ Opties bij init:
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
   --repo <naam>       Repo-host (bv. github, none)
+  --repo-create <ja|nee>   GitHub-repo aanmaken via gh (yes, no)
+  --repo-name <naam>       Naam van de repo (standaard: mapnaam)
+  --repo-visibility <type> private of public (standaard: private)
   --design <ja|nee>   UI/UX design-skill (yes, no)
   --pg-skills <ja|nee> Postgres best-practices skill (yes, no)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
@@ -965,7 +1027,10 @@ async function main() {
       const repo = getFlagValue(flags, "--repo");
       const design = getFlagValue(flags, "--design");
       const pgSkills = getFlagValue(flags, "--pg-skills");
-      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills });
+      const repoCreate = getFlagValue(flags, "--repo-create");
+      const repoName = getFlagValue(flags, "--repo-name");
+      const repoVisibility = getFlagValue(flags, "--repo-visibility");
+      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility });
       break;
     }
     case "update":

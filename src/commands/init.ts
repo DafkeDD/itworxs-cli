@@ -47,6 +47,16 @@ const PGSKILLS_CHOICES: Choice[] = [
   { value: 'yes', label: 'Ja', hint: 'neondatabase/postgres-skills (best practices)' },
 ];
 
+const REPO_CREATE_CHOICES: Choice[] = [
+  { value: 'no', label: 'Nee', hint: 'alleen CI-config, geen repo aanmaken' },
+  { value: 'yes', label: 'Ja', hint: 'maak nu een GitHub-repo aan via de gh CLI' },
+];
+
+const REPO_VISIBILITY_CHOICES: Choice[] = [
+  { value: 'private', label: 'Privé', hint: 'aanbevolen' },
+  { value: 'public', label: 'Publiek', hint: 'iedereen kan de repo zien' },
+];
+
 export interface InitOptions {
   dryRun?: boolean;
   frontend?: string;
@@ -55,6 +65,9 @@ export interface InitOptions {
   repo?: string;
   design?: string;
   pgSkills?: string;
+  repoCreate?: string;
+  repoName?: string;
+  repoVisibility?: string;
 }
 
 function resolveProjectRoot(): string {
@@ -63,7 +76,7 @@ function resolveProjectRoot(): string {
   return cwd;
 }
 
-export async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
@@ -89,6 +102,23 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   const repoChoice = await pick('Waar wil je de repository hosten?', REPO_HOSTS, repo);
   if (repoChoice === undefined) return;
 
+  let repoCreateChoice = 'no';
+  let repoNameChoice = path.basename(projectRoot);
+  let repoVisibilityChoice = 'private';
+  if (repoChoice === 'github') {
+    const create = await pick('Een GitHub-repository aanmaken?', REPO_CREATE_CHOICES, repoCreate);
+    if (create === undefined) return;
+    repoCreateChoice = create;
+    if (repoCreateChoice === 'yes') {
+      const name = await askText('Naam van de repository?', path.basename(projectRoot), repoName);
+      if (name === undefined) return;
+      repoNameChoice = name;
+      const vis = await pick('Zichtbaarheid van de repository?', REPO_VISIBILITY_CHOICES, repoVisibility);
+      if (vis === undefined) return;
+      repoVisibilityChoice = vis;
+    }
+  }
+
   let uiuxChoice = 'no';
   if (frontendChoice === 'nextjs') {
     const choice = await pick('UI/UX design-skill (ui-ux-pro-max) toevoegen?', UIUX_CHOICES, design);
@@ -112,7 +142,11 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
       p.note(`map: ${path.join(projectRoot, 'backend')}\nExpress (TypeScript)\nDatabase: ${dbLine}`, 'Backend');
     }
     if (repoChoice === 'github') {
-      p.note('GitHub Actions CI -> .github/workflows/ci.yml', 'Repository');
+      const repoLine =
+        repoCreateChoice === 'yes'
+          ? `\nGitHub-repo aanmaken: ${repoNameChoice} (${repoVisibilityChoice})`
+          : '';
+      p.note(`GitHub Actions CI -> .github/workflows/ci.yml${repoLine}`, 'Repository');
     }
     p.note('.claude/ met MCP-config, quality-skill en reviewer-agent', 'Claude-tooling');
     if (uiuxChoice === 'yes') {
@@ -139,6 +173,12 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   if (!failed && repoChoice === 'github') {
     await setupGitHub(projectRoot, frontendChoice === 'nextjs', backendChoice === 'node-express');
     done.push('.github/workflows/ci.yml');
+  }
+
+  if (!failed && repoChoice === 'github' && repoCreateChoice === 'yes') {
+    if (await setupGitHubRepo(projectRoot, repoNameChoice, repoVisibilityChoice)) {
+      done.push(`GitHub-repo '${repoNameChoice}' (${repoVisibilityChoice})`);
+    }
   }
 
   if (!failed) {
@@ -190,6 +230,18 @@ async function pick(message: string, options: Choice[], preset?: string): Promis
     return undefined;
   }
   return answer as string;
+}
+
+/** Vraagt om vrije tekst met een standaardwaarde; lege invoer valt terug op de default. */
+async function askText(message: string, defaultValue: string, preset?: string): Promise<string | undefined> {
+  if (preset !== undefined) return preset;
+  const answer = await p.text({ message, placeholder: defaultValue, defaultValue });
+  if (p.isCancel(answer)) {
+    p.cancel('Geannuleerd.');
+    return undefined;
+  }
+  const value = (answer as string).trim();
+  return value || defaultValue;
 }
 
 
@@ -424,6 +476,26 @@ async function setupGitHub(
   const dir = path.join(projectRoot, '.github', 'workflows');
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, 'ci.yml'), buildCiYaml(hasFrontend, hasBackend));
+}
+
+/** Maakt een GitHub-repository aan via de gh CLI en zet 'origin'. Niet-fataal bij een fout. */
+async function setupGitHubRepo(projectRoot: string, name: string, visibility: string): Promise<boolean> {
+  p.log.step(`GitHub-repository aanmaken (${name}, ${visibility}) ...`);
+  if (!existsSync(path.join(projectRoot, '.git'))) {
+    const initCode = await runInShell('git init', projectRoot);
+    if (initCode !== 0) {
+      p.log.warn('git init mislukte; het aanmaken van de repo wordt overgeslagen.');
+      return false;
+    }
+  }
+  const vis = visibility === 'public' ? '--public' : '--private';
+  const code = await runInShell(`gh repo create ${name} ${vis} --source=. --remote=origin`, projectRoot);
+  if (code !== 0) {
+    p.log.warn('Repo aanmaken mislukte. Is de GitHub CLI (`gh`) geïnstalleerd en ingelogd (`gh auth login`)?');
+    p.note(`gh repo create ${name} ${vis} --source=. --remote=origin`, 'Handmatig aanmaken');
+    return false;
+  }
+  return true;
 }
 
 /** Kopieert de .claude/ tooling en genereert de MCP-config (incl. PostgreSQL indien gekozen). */

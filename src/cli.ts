@@ -1,6 +1,6 @@
 import { runInit, runUpdate } from './commands/init';
 
-const VERSION = '0.27.0';
+const VERSION = '0.28.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
@@ -19,6 +19,9 @@ Opties bij init:
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
   --repo <naam>       Repo-host (bv. github, none)
+  --repo-create <ja|nee>   GitHub-repo aanmaken via gh (yes, no)
+  --repo-name <naam>       Naam van de repo (standaard: mapnaam)
+  --repo-visibility <type> private of public (standaard: private)
   --design <ja|nee>   UI/UX design-skill (yes, no)
   --pg-skills <ja|nee> Postgres best-practices skill (yes, no)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
@@ -59,7 +62,10 @@ async function main(): Promise<void> {
       const repo = getFlagValue(flags, '--repo');
       const design = getFlagValue(flags, '--design');
       const pgSkills = getFlagValue(flags, '--pg-skills');
-      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills });
+      const repoCreate = getFlagValue(flags, '--repo-create');
+      const repoName = getFlagValue(flags, '--repo-name');
+      const repoVisibility = getFlagValue(flags, '--repo-visibility');
+      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility });
       break;
     }
     case 'update':

@@ -64,7 +64,10 @@ De wizard stelt nog extra vragen:
   simpele `/health`.
 - **Repository** — waar je de repo host. Bij **GitHub** komt er een
   `.github/workflows/ci.yml` (GitHub Actions) met build-jobs voor de aangemaakte
-  frontend en/of backend.
+  frontend en/of backend. Daarna vraagt de wizard of je meteen een **GitHub-repo
+  wil aanmaken**; zo ja, geef je een **naam** (standaard de mapnaam) en kies je
+  **privé of publiek**. De repo wordt aangemaakt via de GitHub CLI (`gh`, ingelogd)
+  met `origin` als remote.
 - **UI/UX design-skill** (alleen bij Next.js) — optioneel de externe
   `ui-ux-pro-max` skill per project installeren via `npx uipro-cli init --ai claude`.
   Geeft design-intelligentie (stijlen, kleuren, typografie). Vereist Python 3.
@@ -74,6 +77,9 @@ Opties:
 - `--frontend <naam>` — sla de frontend-vraag over (`nextjs`, `none`).
 - `--database <naam>` — sla de database-vraag over (`postgresql`, `none`).
 - `--repo <naam>` — repo-host (`github`, `none`).
+- `--repo-create <ja|nee>` — meteen een GitHub-repo aanmaken (`yes`, `no`).
+- `--repo-name <naam>` — naam van de repo (standaard: de mapnaam).
+- `--repo-visibility <type>` — `private` (standaard) of `public`.
 - `--design <ja|nee>` — UI/UX design-skill installeren (`yes`, `no`).
 - `--backend <naam>` — sla de backend-vraag over (`node-express`, `none`).
 - `--dry-run` — toont enkel wat er zou gebeuren, voert niets uit.
