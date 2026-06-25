@@ -107,7 +107,7 @@ Database: ${dbLine}`, "Backend");
     done.push(".github/workflows/ci.yml");
   }
   if (!failed) {
-    await setupClaude(projectRoot, databaseChoice === "postgresql");
+    await setupClaude(projectRoot, databaseChoice === "postgresql", repoChoice === "github");
     done.push(".claude/ (MCP + quality-skill + reviewer-agent)");
   }
   if (!failed && uiuxChoice === "yes") {
@@ -324,13 +324,13 @@ async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "ci.yml"), buildCiYaml(hasFrontend, hasBackend));
 }
-async function setupClaude(projectRoot, withPostgres) {
+async function setupClaude(projectRoot, withPostgres, withGithub) {
   p.log.step("Claude-tooling toevoegen (.claude/) ...");
   const claudeDir = path.join(projectRoot, ".claude");
   await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
-  await fs.writeFile(path.join(claudeDir, "mcp.json"), buildMcpJson(withPostgres));
+  await fs.writeFile(path.join(claudeDir, "mcp.json"), buildMcpJson(withPostgres, withGithub));
 }
-function buildMcpJson(withPostgres) {
+function buildMcpJson(withPostgres, withGithub) {
   const mcpServers = {
     context7: {
       command: "npx",
@@ -351,6 +351,14 @@ function buildMcpJson(withPostgres) {
       description: "GitNexus - codebase-kennisgraaf voor architectuur en impact-analyse"
     }
   };
+  if (withGithub) {
+    mcpServers.github = {
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-github"],
+      env: { GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}" },
+      description: "GitHub - issues, PRs en Actions beheren (zet GITHUB_PERSONAL_ACCESS_TOKEN in je omgeving)"
+    };
+  }
   if (withPostgres) {
     mcpServers.postgres = {
       command: "npx",
@@ -892,7 +900,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.17.0";
+var VERSION = "0.18.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

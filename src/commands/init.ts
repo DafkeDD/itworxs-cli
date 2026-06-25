@@ -141,7 +141,7 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   }
 
   if (!failed) {
-    await setupClaude(projectRoot, databaseChoice === 'postgresql');
+    await setupClaude(projectRoot, databaseChoice === 'postgresql', repoChoice === 'github');
     done.push('.claude/ (MCP + quality-skill + reviewer-agent)');
   }
 
@@ -409,15 +409,15 @@ async function setupGitHub(
 }
 
 /** Kopieert de .claude/ tooling en genereert de MCP-config (incl. PostgreSQL indien gekozen). */
-async function setupClaude(projectRoot: string, withPostgres: boolean): Promise<void> {
+async function setupClaude(projectRoot: string, withPostgres: boolean, withGithub: boolean): Promise<void> {
   p.log.step('Claude-tooling toevoegen (.claude/) ...');
   const claudeDir = path.join(projectRoot, '.claude');
   await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
-  await fs.writeFile(path.join(claudeDir, 'mcp.json'), buildMcpJson(withPostgres));
+  await fs.writeFile(path.join(claudeDir, 'mcp.json'), buildMcpJson(withPostgres, withGithub));
 }
 
 /** Bouwt .claude/mcp.json; voegt een PostgreSQL-server toe wanneer er een Postgres-database is. */
-function buildMcpJson(withPostgres: boolean): string {
+function buildMcpJson(withPostgres: boolean, withGithub: boolean): string {
   const mcpServers: Record<string, unknown> = {
     context7: {
       command: 'npx',
@@ -438,6 +438,14 @@ function buildMcpJson(withPostgres: boolean): string {
       description: 'GitNexus - codebase-kennisgraaf voor architectuur en impact-analyse',
     },
   };
+  if (withGithub) {
+    mcpServers.github = {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+      env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' },
+      description: 'GitHub - issues, PRs en Actions beheren (zet GITHUB_PERSONAL_ACCESS_TOKEN in je omgeving)',
+    };
+  }
   if (withPostgres) {
     mcpServers.postgres = {
       command: 'npx',
