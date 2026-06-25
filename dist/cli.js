@@ -912,7 +912,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.26.0";
+var VERSION = "0.27.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
