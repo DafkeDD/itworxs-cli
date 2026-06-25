@@ -535,7 +535,9 @@ const ROUTING_TS = `import { defineRouting } from 'next-intl/routing'
 // Pas hier de ondersteunde talen aan.
 export const routing = defineRouting({
     locales: ['en', 'nl', 'fr', 'de'],
-    defaultLocale: 'en'
+    defaultLocale: 'en',
+    // Geen taalcode in de URL (/nl, /de, ...). Taal wordt via een cookie bijgehouden.
+    localePrefix: 'never'
 })
 `;
 

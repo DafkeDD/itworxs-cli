@@ -447,7 +447,9 @@ var ROUTING_TS = `import { defineRouting } from 'next-intl/routing'
 // Pas hier de ondersteunde talen aan.
 export const routing = defineRouting({
     locales: ['en', 'nl', 'fr', 'de'],
-    defaultLocale: 'en'
+    defaultLocale: 'en',
+    // Geen taalcode in de URL (/nl, /de, ...). Taal wordt via een cookie bijgehouden.
+    localePrefix: 'never'
 })
 `;
 var NAVIGATION_TS = `import { createNavigation } from 'next-intl/navigation'
@@ -785,7 +787,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.10.1";
+var VERSION = "0.10.2";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
