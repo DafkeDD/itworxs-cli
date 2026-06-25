@@ -56,9 +56,19 @@ mijn-project/
   backend/     # Node.js + Express API
 ```
 
+Bij een **backend** stelt de wizard nog twee extra vragen:
+
+- **Database** — PostgreSQL (standaard, met `pg` + `config/db.ts`) of geen.
+- **Login-providers** — multiselect uit Google, Microsoft, Azure AD, GitHub. De
+  keuze komt in `src/config/auth.ts` (`ENABLED_AUTH_PROVIDERS`), in sync met de
+  `OAUTH_*` variabelen in `.env.example`. Kies je geen database, dan worden `db.ts`
+  en `pg` weggelaten en krijg je een simpele `/health`.
+
 Opties:
 
 - `--frontend <naam>` — sla de frontend-vraag over (`nextjs`, `none`).
+- `--database <naam>` — sla de database-vraag over (`postgresql`, `none`).
+- `--auth <lijst>` — login-providers, komma-gescheiden (bv. `google,github`).
 - `--backend <naam>` — sla de backend-vraag over (`node-express`, `none`).
 - `--dry-run` — toont enkel wat er zou gebeuren, voert niets uit.
 

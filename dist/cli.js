@@ -15,18 +15,38 @@ var BACKENDS = [
   { value: "node-express", label: "Node.js + Express", hint: "TypeScript, basis API-server" },
   { value: "none", label: "Geen", hint: "geen backend" }
 ];
+var DATABASES = [
+  { value: "postgresql", label: "PostgreSQL", hint: "aanbevolen (pg + config/db.ts)" },
+  { value: "none", label: "Geen", hint: "geen database" }
+];
+var AUTH_PROVIDERS = [
+  { value: "google", label: "Google", hint: "OAuth" },
+  { value: "microsoft", label: "Microsoft", hint: "persoonlijke accounts" },
+  { value: "azure", label: "Azure AD / Entra", hint: "work / school" },
+  { value: "github", label: "GitHub", hint: "OAuth" }
+];
 function resolveProjectRoot() {
   const cwd = process.cwd();
   if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
   return cwd;
 }
-async function runInit({ dryRun = false, frontend, backend } = {}) {
+async function runInit({ dryRun = false, frontend, backend, database, auth } = {}) {
   const projectRoot = resolveProjectRoot();
   p.intro(chalk.bgCyan(chalk.black(" itworxs ")) + " project setup");
   const frontendChoice = await pick("Welke frontend wil je gebruiken?", FRONTENDS, frontend);
   if (frontendChoice === void 0) return;
   const backendChoice = await pick("Welke backend wil je gebruiken?", BACKENDS, backend);
   if (backendChoice === void 0) return;
+  let databaseChoice = "none";
+  let authProviders = [];
+  if (backendChoice === "node-express") {
+    const db = await pick("Welke database wil je gebruiken?", DATABASES, database);
+    if (db === void 0) return;
+    databaseChoice = db;
+    const providers = await pickMulti("Welke login-providers wil je voorzien?", AUTH_PROVIDERS, auth);
+    if (providers === void 0) return;
+    authProviders = providers;
+  }
   if (frontendChoice === "none" && backendChoice === "none") {
     p.outro(chalk.dim("Niets geselecteerd - niets te doen."));
     return;
@@ -37,8 +57,15 @@ async function runInit({ dryRun = false, frontend, backend } = {}) {
 Next.js + TailwindCSS + next-intl (i18n) + Prettier`, "Frontend");
     }
     if (backendChoice === "node-express") {
-      p.note(`map: ${path.join(projectRoot, "backend")}
-Node.js + Express in TypeScript + Prettier`, "Backend");
+      const dbLine = databaseChoice === "postgresql" ? "PostgreSQL" : "geen";
+      const authLine = authProviders.length ? authProviders.join(", ") : "geen";
+      p.note(
+        `map: ${path.join(projectRoot, "backend")}
+Express (TypeScript)
+Database: ${dbLine}
+Login-providers: ${authLine}`,
+        "Backend"
+      );
     }
     p.outro(chalk.yellow("dry-run: niets uitgevoerd"));
     return;
@@ -49,7 +76,7 @@ Node.js + Express in TypeScript + Prettier`, "Backend");
     await setupNextjs(projectRoot) ? done.push("frontend/ (Next.js + Tailwind + next-intl + Prettier)") : failed = true;
   }
   if (!failed && backendChoice === "node-express") {
-    await setupNodeExpress(projectRoot) ? done.push("backend/ (Express + TypeScript + Prettier)") : failed = true;
+    await setupNodeExpress(projectRoot, databaseChoice, authProviders) ? done.push("backend/ (Express + TypeScript + Prettier)") : failed = true;
   }
   if (failed) {
     p.outro(chalk.red("Setup gestopt door een fout."));
@@ -61,6 +88,21 @@ Node.js + Express in TypeScript + Prettier`, "Backend");
 async function pick(message, options, preset) {
   if (preset) return preset;
   const answer = await p.select({ message, options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })) });
+  if (p.isCancel(answer)) {
+    p.cancel("Geannuleerd.");
+    return void 0;
+  }
+  return answer;
+}
+async function pickMulti(message, options, preset) {
+  if (preset !== void 0) {
+    return preset.split(",").map((x) => x.trim()).filter((x) => x.length > 0);
+  }
+  const answer = await p.multiselect({
+    message,
+    options: options.map((o) => ({ value: o.value, label: o.label, hint: o.hint })),
+    required: false
+  });
   if (p.isCancel(answer)) {
     p.cancel("Geannuleerd.");
     return void 0;
@@ -118,12 +160,13 @@ async function setupTheme(dir) {
   await fs.writeFile(path.join(src, "app", "globals.css"), GLOBALS_CSS);
   return true;
 }
-async function setupNodeExpress(projectRoot) {
+async function setupNodeExpress(projectRoot, database, authProviders) {
   const dir = path.join(projectRoot, "backend");
   if (await dirHasContent(dir)) {
     p.log.error(`Map 'backend' bestaat al en is niet leeg: ${dir}`);
     return false;
   }
+  const usePg = database === "postgresql";
   p.log.step("Node.js + Express (TypeScript) opzetten in backend/ ...");
   await fs.mkdir(path.join(dir, "src"), { recursive: true });
   const subDirs = ["config", "controllers", "data", "middleware", "modals", "routes", "services"];
@@ -149,24 +192,85 @@ async function setupNodeExpress(projectRoot) {
     JSON.stringify({ watch: ["src"], ext: "ts,json", exec: "tsx src/index.ts" }, null, 2) + "\n"
   );
   await fs.writeFile(path.join(dir, "tsconfig.json"), TSCONFIG_BACKEND);
-  await fs.writeFile(path.join(dir, "src", "index.ts"), EXPRESS_SERVER_TS);
-  await fs.writeFile(path.join(dir, ".prettierrc"), PRETTIERRC_BACKEND);
-  await fs.writeFile(path.join(dir, ".gitignore"), "node_modules/\ndist/\n.env\n");
-  await fs.writeFile(path.join(dir, "src", "config", "db.ts"), DB_TS);
-  await fs.writeFile(path.join(dir, "src", "config", "env.ts"), ENV_TS);
+  await fs.writeFile(path.join(dir, "src", "index.ts"), buildIndexTs(usePg));
+  await fs.writeFile(path.join(dir, "src", "config", "env.ts"), buildEnvTs(usePg));
   await fs.writeFile(path.join(dir, "src", "config", "locale.ts"), LOCALE_TS);
   await fs.writeFile(path.join(dir, "src", "services", "logger.ts"), LOGGER_TS);
+  if (usePg) {
+    await fs.writeFile(path.join(dir, "src", "config", "db.ts"), DB_TS);
+  }
+  if (authProviders.length > 0) {
+    await fs.writeFile(path.join(dir, "src", "config", "auth.ts"), buildAuthTs(authProviders));
+  }
   await fs.writeFile(path.join(dir, ".env.example"), ENV_EXAMPLE);
-  if (await runInShell("npm install express pg pino dotenv node-cron cors --no-audit --no-fund", dir) !== 0) return false;
-  return await runInShell(
-    "npm install -D typescript tsx nodemon @types/express @types/node @types/pg @types/node-cron @types/cors prettier --no-audit --no-fund",
-    dir
-  ) === 0;
+  await fs.writeFile(path.join(dir, ".gitignore"), "node_modules/\ndist/\n.env\n");
+  const runtime = ["express", "cors", "dotenv", "node-cron", "pino"];
+  if (usePg) runtime.push("pg");
+  const dev = [
+    "typescript",
+    "tsx",
+    "nodemon",
+    "prettier",
+    "@types/express",
+    "@types/node",
+    "@types/cors",
+    "@types/node-cron"
+  ];
+  if (usePg) dev.push("@types/pg");
+  if (await runInShell("npm install " + runtime.join(" ") + " --no-audit --no-fund", dir) !== 0) {
+    return false;
+  }
+  return await runInShell("npm install -D " + dev.join(" ") + " --no-audit --no-fund", dir) === 0;
 }
-var EXPRESS_SERVER_TS = `import express from 'express'
+function buildEnvTs(usePg) {
+  const dbFields = usePg ? `,
+    DB_HOST: required('DB_HOST', 'localhost'),
+    DB_USER: required('DB_USER', 'postgres'),
+    DB_PASSWORD: required('DB_PASSWORD', 'password'),
+    DB_DATABASE: required('DB_DATABASE', 'projectx'),
+    DB_PORT: Number(get('DB_PORT') ?? 5432)` : "";
+  return `import 'dotenv/config'
+
+// Lege strings (bv. LOG_LEVEL= in .env) gelden als 'niet ingesteld'.
+function get(name: string): string | undefined {
+    const value = process.env[name]
+    return value === undefined || value === '' ? undefined : value
+}
+
+function required(name: string, fallback?: string): string {
+    const value = get(name) ?? fallback
+    if (value === undefined) {
+        throw new Error('Ontbrekende environment variabele: ' + name)
+    }
+    return value
+}
+
+export const env = {
+    NODE_ENV: get('NODE_ENV') ?? 'development',
+    PORT: Number(get('PORT') ?? 5000),
+    LOG_LEVEL:
+        get('LOG_LEVEL') ?? (get('NODE_ENV') === 'production' ? 'info' : 'debug'),
+    FRONTEND_URL: get('FRONTEND_URL') ?? 'http://localhost:3000'${dbFields}
+}
+`;
+}
+function buildIndexTs(usePg) {
+  const poolImport = usePg ? `
+import pool from './config/db.js'` : "";
+  const health = usePg ? `app.get('/health', async (_req: Request, res: Response) => {
+    try {
+        await pool.query('SELECT 1')
+        res.json({ status: 'ok', db: 'up' })
+    } catch (err) {
+        logger.error({ err }, 'Database health check mislukt')
+        res.status(500).json({ status: 'error', db: 'down' })
+    }
+})` : `app.get('/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok' })
+})`;
+  return `import express from 'express'
 import type { Request, Response } from 'express'
-import cors from 'cors'
-import pool from './config/db.js'
+import cors from 'cors'${poolImport}
 import { env } from './config/env.js'
 import { logger } from './services/logger.js'
 
@@ -184,21 +288,26 @@ app.get('/', (_req: Request, res: Response) => {
     res.json({ message: 'Hallo vanuit de ItWorXs backend!' })
 })
 
-// Health check met database-ping
-app.get('/health', async (_req: Request, res: Response) => {
-    try {
-        await pool.query('SELECT 1')
-        res.json({ status: 'ok', db: 'up' })
-    } catch (err) {
-        logger.error({ err }, 'Database health check mislukt')
-        res.status(500).json({ status: 'error', db: 'down' })
-    }
-})
+// Health check
+${health}
 
 app.listen(env.PORT, () => {
     logger.info('Backend draait op http://localhost:' + env.PORT)
 })
 `;
+}
+function buildAuthTs(providers) {
+  const list = providers.map((x) => `'${x}'`).join(", ");
+  return `// Ingeschakelde login-providers (OAuth). Houd in sync met de OAUTH_* vars in .env.
+export const ENABLED_AUTH_PROVIDERS = [${list}] as const
+
+export type AuthProvider = (typeof ENABLED_AUTH_PROVIDERS)[number]
+
+export const isAuthProvider = (value: unknown): value is AuthProvider =>
+    typeof value === 'string' &&
+    (ENABLED_AUTH_PROVIDERS as readonly string[]).includes(value)
+`;
+}
 var TSCONFIG_BACKEND = `{
   "compilerOptions": {
     "target": "ES2022",
@@ -236,35 +345,6 @@ pool.on('error', (err: Error) => {
 })
 
 export default pool
-`;
-var ENV_TS = `import 'dotenv/config'
-
-// Lege strings (bv. LOG_LEVEL= in .env) gelden als 'niet ingesteld'.
-function get(name: string): string | undefined {
-    const value = process.env[name]
-    return value === undefined || value === '' ? undefined : value
-}
-
-function required(name: string, fallback?: string): string {
-    const value = get(name) ?? fallback
-    if (value === undefined) {
-        throw new Error('Ontbrekende environment variabele: ' + name)
-    }
-    return value
-}
-
-export const env = {
-    NODE_ENV: get('NODE_ENV') ?? 'development',
-    PORT: Number(get('PORT') ?? 5000),
-    LOG_LEVEL:
-        get('LOG_LEVEL') ?? (get('NODE_ENV') === 'production' ? 'info' : 'debug'),
-    DB_HOST: required('DB_HOST', 'localhost'),
-    DB_USER: required('DB_USER', 'postgres'),
-    DB_PASSWORD: required('DB_PASSWORD', 'password'),
-    DB_DATABASE: required('DB_DATABASE', 'projectx'),
-    DB_PORT: Number(get('DB_PORT') ?? 5432),
-    FRONTEND_URL: get('FRONTEND_URL') ?? 'http://localhost:3000'
-}
 `;
 var LOGGER_TS = `import pino from 'pino'
 import { env } from '../config/env.js'
@@ -659,16 +739,6 @@ var PRETTIERRC_FRONTEND = `{
     "plugins": ["prettier-plugin-tailwindcss"]
 }
 `;
-var PRETTIERRC_BACKEND = `{
-    "arrowParens": "avoid",
-    "singleQuote": true,
-    "tabWidth": 4,
-    "trailingComma": "none",
-    "semi": false,
-    "proseWrap": "always",
-    "printWidth": 80
-}
-`;
 async function addFormatScript(dir) {
   const pkgPath = path.join(dir, "package.json");
   try {
@@ -709,7 +779,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.9.1";
+var VERSION = "0.10.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
@@ -724,6 +794,8 @@ Commands:
 Opties bij init:
   --frontend <naam>   Sla de frontend-vraag over (bv. nextjs, none)
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
+  --database <naam>   Sla de database-vraag over (bv. postgresql, none)
+  --auth <lijst>      Login-providers, komma-gescheiden (bv. google,github)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
@@ -753,7 +825,9 @@ async function main() {
       const dryRun = flags.includes("--dry-run");
       const frontend = getFlagValue(flags, "--frontend");
       const backend = getFlagValue(flags, "--backend");
-      await runInit({ dryRun, frontend, backend });
+      const database = getFlagValue(flags, "--database");
+      const auth = getFlagValue(flags, "--auth");
+      await runInit({ dryRun, frontend, backend, database, auth });
       break;
     }
     default:
