@@ -1,6 +1,6 @@
 import { runInit } from './commands/init';
 
-const VERSION = '0.13.0';
+const VERSION = '0.14.0';
 
 const HELP = `
 itworxs - basis CLI voor ItWorXs projecten
@@ -18,6 +18,7 @@ Opties bij init:
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
   --repo <naam>       Repo-host (bv. github, none)
+  --design <ja|nee>   UI/UX design-skill (yes, no)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
@@ -54,7 +55,8 @@ async function main(): Promise<void> {
       const backend = getFlagValue(flags, '--backend');
       const database = getFlagValue(flags, '--database');
       const repo = getFlagValue(flags, '--repo');
-      await runInit({ dryRun, frontend, backend, database, repo });
+      const design = getFlagValue(flags, '--design');
+      await runInit({ dryRun, frontend, backend, database, repo, design });
       break;
     }
     default:

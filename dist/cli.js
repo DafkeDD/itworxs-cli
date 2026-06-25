@@ -26,12 +26,16 @@ var REPO_HOSTS = [
   { value: "github", label: "GitHub", hint: "GitHub Actions CI" },
   { value: "none", label: "Geen", hint: "geen repo-config" }
 ];
+var UIUX_CHOICES = [
+  { value: "no", label: "Nee", hint: "geen design-skill" },
+  { value: "yes", label: "Ja", hint: "ui-ux-pro-max (extern, vereist Python 3)" }
+];
 function resolveProjectRoot() {
   const cwd = process.cwd();
   if (path.basename(cwd) === INSTALL_DIR_NAME) return path.dirname(cwd);
   return cwd;
 }
-async function runInit({ dryRun = false, frontend, backend, database, repo } = {}) {
+async function runInit({ dryRun = false, frontend, backend, database, repo, design } = {}) {
   const projectRoot = resolveProjectRoot();
   p.intro(chalk.bgCyan(chalk.black(" itworxs ")) + " project setup");
   const frontendChoice = await pick("Welke frontend wil je gebruiken?", FRONTENDS, frontend);
@@ -50,6 +54,12 @@ async function runInit({ dryRun = false, frontend, backend, database, repo } = {
   }
   const repoChoice = await pick("Waar wil je de repository hosten?", REPO_HOSTS, repo);
   if (repoChoice === void 0) return;
+  let uiuxChoice = "no";
+  if (frontendChoice === "nextjs") {
+    const choice = await pick("UI/UX design-skill (ui-ux-pro-max) toevoegen?", UIUX_CHOICES, design);
+    if (choice === void 0) return;
+    uiuxChoice = choice;
+  }
   if (dryRun) {
     if (frontendChoice === "nextjs") {
       p.note(`map: ${path.join(projectRoot, "frontend")}
@@ -65,6 +75,9 @@ Database: ${dbLine}`, "Backend");
       p.note("GitHub Actions CI -> .github/workflows/ci.yml", "Repository");
     }
     p.note(".claude/ met MCP-config, quality-skill en reviewer-agent", "Claude-tooling");
+    if (uiuxChoice === "yes") {
+      p.note("ui-ux-pro-max design-skill via uipro-cli (vereist Python 3)", "UI/UX");
+    }
     p.outro(chalk.yellow("dry-run: niets uitgevoerd"));
     return;
   }
@@ -83,6 +96,10 @@ Database: ${dbLine}`, "Backend");
   if (!failed) {
     await setupClaude(projectRoot);
     done.push(".claude/ (MCP + quality-skill + reviewer-agent)");
+  }
+  if (!failed && uiuxChoice === "yes") {
+    await setupUiUx(projectRoot);
+    done.push("ui-ux-pro-max design-skill");
   }
   if (failed) {
     p.outro(chalk.red("Setup gestopt door een fout."));
@@ -293,6 +310,15 @@ async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
 async function setupClaude(projectRoot) {
   p.log.step("Claude-tooling toevoegen (.claude/) ...");
   await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, ".claude"), { recursive: true });
+}
+async function setupUiUx(projectRoot) {
+  p.log.step("UI/UX design-skill (ui-ux-pro-max) installeren via uipro-cli ...");
+  const code = await runInShell("npx -y uipro-cli init --ai claude", projectRoot);
+  if (code === 0) {
+    p.log.info("Let op: de ui-ux-pro-max skill vereist Python 3 om te draaien.");
+  } else {
+    p.log.warn("ui-ux-pro-max installeren is mislukt; je kunt het later draaien met: npx uipro-cli init --ai claude");
+  }
 }
 function buildCiYaml(hasFrontend, hasBackend) {
   const job = (name, dir) => `  ${name}:
@@ -805,7 +831,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.13.0";
+var VERSION = "0.14.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
@@ -822,6 +848,7 @@ Opties bij init:
   --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
   --repo <naam>       Repo-host (bv. github, none)
+  --design <ja|nee>   UI/UX design-skill (yes, no)
   --dry-run           Toon enkel wat er zou gebeuren, voer niets uit
 
 Algemeen:
@@ -853,7 +880,8 @@ async function main() {
       const backend = getFlagValue(flags, "--backend");
       const database = getFlagValue(flags, "--database");
       const repo = getFlagValue(flags, "--repo");
-      await runInit({ dryRun, frontend, backend, database, repo });
+      const design = getFlagValue(flags, "--design");
+      await runInit({ dryRun, frontend, backend, database, repo, design });
       break;
     }
     default:

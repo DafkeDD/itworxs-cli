@@ -64,12 +64,16 @@ De wizard stelt nog extra vragen:
 - **Repository** — waar je de repo host. Bij **GitHub** komt er een
   `.github/workflows/ci.yml` (GitHub Actions) met build-jobs voor de aangemaakte
   frontend en/of backend.
+- **UI/UX design-skill** (alleen bij Next.js) — optioneel de externe
+  `ui-ux-pro-max` skill per project installeren via `npx uipro-cli init --ai claude`.
+  Geeft design-intelligentie (stijlen, kleuren, typografie). Vereist Python 3.
 
 Opties:
 
 - `--frontend <naam>` — sla de frontend-vraag over (`nextjs`, `none`).
 - `--database <naam>` — sla de database-vraag over (`postgresql`, `none`).
 - `--repo <naam>` — repo-host (`github`, `none`).
+- `--design <ja|nee>` — UI/UX design-skill installeren (`yes`, `no`).
 - `--backend <naam>` — sla de backend-vraag over (`node-express`, `none`).
 - `--dry-run` — toont enkel wat er zou gebeuren, voert niets uit.
 

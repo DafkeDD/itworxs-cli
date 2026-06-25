@@ -36,12 +36,18 @@ const REPO_HOSTS: Choice[] = [
   { value: 'none', label: 'Geen', hint: 'geen repo-config' },
 ];
 
+const UIUX_CHOICES: Choice[] = [
+  { value: 'no', label: 'Nee', hint: 'geen design-skill' },
+  { value: 'yes', label: 'Ja', hint: 'ui-ux-pro-max (extern, vereist Python 3)' },
+];
+
 export interface InitOptions {
   dryRun?: boolean;
   frontend?: string;
   backend?: string;
   database?: string;
   repo?: string;
+  design?: string;
 }
 
 function resolveProjectRoot(): string {
@@ -50,7 +56,7 @@ function resolveProjectRoot(): string {
   return cwd;
 }
 
-export async function runInit({ dryRun = false, frontend, backend, database, repo }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend, backend, database, repo, design }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
@@ -76,6 +82,13 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   const repoChoice = await pick('Waar wil je de repository hosten?', REPO_HOSTS, repo);
   if (repoChoice === undefined) return;
 
+  let uiuxChoice = 'no';
+  if (frontendChoice === 'nextjs') {
+    const choice = await pick('UI/UX design-skill (ui-ux-pro-max) toevoegen?', UIUX_CHOICES, design);
+    if (choice === undefined) return;
+    uiuxChoice = choice;
+  }
+
   if (dryRun) {
     if (frontendChoice === 'nextjs') {
       p.note(`map: ${path.join(projectRoot, 'frontend')}\nNext.js + TailwindCSS + next-intl (i18n) + Prettier`, 'Frontend');
@@ -88,6 +101,9 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
       p.note('GitHub Actions CI -> .github/workflows/ci.yml', 'Repository');
     }
     p.note('.claude/ met MCP-config, quality-skill en reviewer-agent', 'Claude-tooling');
+    if (uiuxChoice === 'yes') {
+      p.note('ui-ux-pro-max design-skill via uipro-cli (vereist Python 3)', 'UI/UX');
+    }
     p.outro(chalk.yellow('dry-run: niets uitgevoerd'));
     return;
   }
@@ -111,6 +127,11 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   if (!failed) {
     await setupClaude(projectRoot);
     done.push('.claude/ (MCP + quality-skill + reviewer-agent)');
+  }
+
+  if (!failed && uiuxChoice === 'yes') {
+    await setupUiUx(projectRoot);
+    done.push('ui-ux-pro-max design-skill');
   }
 
   if (failed) {
@@ -370,6 +391,17 @@ async function setupGitHub(
 async function setupClaude(projectRoot: string): Promise<void> {
   p.log.step('Claude-tooling toevoegen (.claude/) ...');
   await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, '.claude'), { recursive: true });
+}
+
+/** Installeert de externe ui-ux-pro-max design-skill per project via uipro-cli. */
+async function setupUiUx(projectRoot: string): Promise<void> {
+  p.log.step('UI/UX design-skill (ui-ux-pro-max) installeren via uipro-cli ...');
+  const code = await runInShell('npx -y uipro-cli init --ai claude', projectRoot);
+  if (code === 0) {
+    p.log.info('Let op: de ui-ux-pro-max skill vereist Python 3 om te draaien.');
+  } else {
+    p.log.warn('ui-ux-pro-max installeren is mislukt; je kunt het later draaien met: npx uipro-cli init --ai claude');
+  }
 }
 
 function buildCiYaml(hasFrontend: boolean, hasBackend: boolean): string {
