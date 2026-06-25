@@ -94,7 +94,7 @@ Database: ${dbLine}`, "Backend");
     done.push(".github/workflows/ci.yml");
   }
   if (!failed) {
-    await setupClaude(projectRoot);
+    await setupClaude(projectRoot, databaseChoice === "postgresql");
     done.push(".claude/ (MCP + quality-skill + reviewer-agent)");
   }
   if (!failed && uiuxChoice === "yes") {
@@ -307,9 +307,46 @@ async function setupGitHub(projectRoot, hasFrontend, hasBackend) {
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "ci.yml"), buildCiYaml(hasFrontend, hasBackend));
 }
-async function setupClaude(projectRoot) {
+async function setupClaude(projectRoot, withPostgres) {
   p.log.step("Claude-tooling toevoegen (.claude/) ...");
-  await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, ".claude"), { recursive: true });
+  const claudeDir = path.join(projectRoot, ".claude");
+  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
+  await fs.writeFile(path.join(claudeDir, "mcp.json"), buildMcpJson(withPostgres));
+}
+function buildMcpJson(withPostgres) {
+  const mcpServers = {
+    context7: {
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp@latest"],
+      env: {},
+      description: "Context7 - actuele library-documentatie voor frameworks en SDKs"
+    },
+    playwright: {
+      command: "npx",
+      args: ["-y", "@playwright/mcp@latest"],
+      env: {},
+      description: "Playwright - browser-automation voor het testen en debuggen van web-UIs"
+    },
+    gitnexus: {
+      command: "npx",
+      args: ["-y", "gitnexus-mcp@latest"],
+      env: {},
+      description: "GitNexus - codebase-kennisgraaf voor architectuur en impact-analyse"
+    }
+  };
+  if (withPostgres) {
+    mcpServers.postgres = {
+      command: "npx",
+      args: [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://postgres:password@localhost:5432/projectx"
+      ],
+      env: {},
+      description: "PostgreSQL - read-only SQL-toegang tot de projectdatabase (pas de connection string aan)"
+    };
+  }
+  return JSON.stringify({ mcpServers }, null, 2) + "\n";
 }
 async function setupUiUx(projectRoot) {
   p.log.step("UI/UX design-skill (ui-ux-pro-max) installeren via uipro-cli ...");
@@ -831,7 +868,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.14.0";
+var VERSION = "0.15.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

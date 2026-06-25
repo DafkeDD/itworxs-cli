@@ -125,7 +125,7 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   }
 
   if (!failed) {
-    await setupClaude(projectRoot);
+    await setupClaude(projectRoot, databaseChoice === 'postgresql');
     done.push('.claude/ (MCP + quality-skill + reviewer-agent)');
   }
 
@@ -387,10 +387,49 @@ async function setupGitHub(
   await fs.writeFile(path.join(dir, 'ci.yml'), buildCiYaml(hasFrontend, hasBackend));
 }
 
-/** Kopieert de .claude/ tooling (MCP-config, quality-skill, reviewer-agent) naar het project. */
-async function setupClaude(projectRoot: string): Promise<void> {
+/** Kopieert de .claude/ tooling en genereert de MCP-config (incl. PostgreSQL indien gekozen). */
+async function setupClaude(projectRoot: string, withPostgres: boolean): Promise<void> {
   p.log.step('Claude-tooling toevoegen (.claude/) ...');
-  await fs.cp(CLAUDE_TEMPLATES_DIR, path.join(projectRoot, '.claude'), { recursive: true });
+  const claudeDir = path.join(projectRoot, '.claude');
+  await fs.cp(CLAUDE_TEMPLATES_DIR, claudeDir, { recursive: true });
+  await fs.writeFile(path.join(claudeDir, 'mcp.json'), buildMcpJson(withPostgres));
+}
+
+/** Bouwt .claude/mcp.json; voegt een PostgreSQL-server toe wanneer er een Postgres-database is. */
+function buildMcpJson(withPostgres: boolean): string {
+  const mcpServers: Record<string, unknown> = {
+    context7: {
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp@latest'],
+      env: {},
+      description: 'Context7 - actuele library-documentatie voor frameworks en SDKs',
+    },
+    playwright: {
+      command: 'npx',
+      args: ['-y', '@playwright/mcp@latest'],
+      env: {},
+      description: 'Playwright - browser-automation voor het testen en debuggen van web-UIs',
+    },
+    gitnexus: {
+      command: 'npx',
+      args: ['-y', 'gitnexus-mcp@latest'],
+      env: {},
+      description: 'GitNexus - codebase-kennisgraaf voor architectuur en impact-analyse',
+    },
+  };
+  if (withPostgres) {
+    mcpServers.postgres = {
+      command: 'npx',
+      args: [
+        '-y',
+        '@modelcontextprotocol/server-postgres',
+        'postgresql://postgres:password@localhost:5432/projectx',
+      ],
+      env: {},
+      description: 'PostgreSQL - read-only SQL-toegang tot de projectdatabase (pas de connection string aan)',
+    };
+  }
+  return JSON.stringify({ mcpServers }, null, 2) + '\n';
 }
 
 /** Installeert de externe ui-ux-pro-max design-skill per project via uipro-cli. */
