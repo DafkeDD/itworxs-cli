@@ -78,6 +78,8 @@ async function setupNextjs(projectRoot) {
   if (await runInShell(command, projectRoot) !== 0) return false;
   if (!await setupNextIntl(dir)) return false;
   if (!await setupTheme(dir)) return false;
+  p.log.step("react-icons toevoegen aan frontend/ ...");
+  if (await runInShell("npm install react-icons --no-audit --no-fund", dir) !== 0) return false;
   p.log.step("Prettier toevoegen aan frontend/ ...");
   await fs.writeFile(path.join(dir, ".prettierrc"), PRETTIERRC_FRONTEND);
   await addFormatScript(dir);
@@ -430,6 +432,7 @@ var MESSAGES_DE = `{
 var LOCALE_LAYOUT_TSX = `import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
+import { FaReact } from 'react-icons/fa'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
@@ -462,9 +465,14 @@ export default async function LocaleLayout({
             <body>
                 <ThemeProvider>
                     <NextIntlClientProvider>
-                        <header className="flex justify-end gap-2 p-4">
-                            <LocaleSwitcher />
-                            <ThemeSwitcher />
+                        <header className="flex items-center justify-between p-4">
+                            <span className="flex items-center gap-2 font-semibold">
+                                <FaReact className="text-cyan-500" /> ItWorXs
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <LocaleSwitcher />
+                                <ThemeSwitcher />
+                            </div>
                         </header>
                         {children}
                     </NextIntlClientProvider>
@@ -701,7 +709,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.8.6";
+var VERSION = "0.9.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 
