@@ -25,17 +25,26 @@ zolang niet alle issues bestaan.
 
 ## Per fase — in volgorde, enkel fases met `"done": false`
 
+> **Verplichte testregel.** Voor elke fase geldt: schrijf tests voor **alle** nieuwe of
+> gewijzigde code (zowel happy- als failure-paths), voer ze uit, en krijg ze **groen**
+> vóór je een PR opent. Geen tests geschreven of een rode testrun = geen PR. Dit is niet
+> onderhandelbaar.
+
 1. **Branch** — `git checkout main && git pull && git checkout -b feat/<slug>-fase-<n>`.
-2. **Implementeren** — Gebruik de itworxs-explorer agent om de fase te situeren, dan de
-   itworxs-developer agent om de taken te bouwen volgens de projectpatronen, en de
-   itworxs-tester agent voor happy- én failure-path tests.
-3. **Kwaliteit & tests** — Draai de itworxs-quality skill (lint, types, **tests**, build)
-   en los blokkers op. **Bewaar de uitvoer van de testrun** (geslaagd/gefaald + aantallen),
-   die komt in de PR:
+2. **Implementeren + tests schrijven** — Gebruik de itworxs-explorer agent om de fase te
+   situeren, dan de itworxs-developer agent om de taken te bouwen volgens de
+   projectpatronen. Laat vervolgens de itworxs-tester agent **verplicht** tests schrijven
+   voor alle nieuwe/gewijzigde code — happy- én failure-paths. Code zonder tests telt niet
+   als af.
+3. **Tests uitvoeren + kwaliteit** — Voer de tests uit en krijg ze **groen** (verplichte
+   gate vóór de PR). Draai daarna de itworxs-quality skill (lint, types, build) en los
+   blokkers op. **Bewaar de uitvoer van de testrun** (geslaagd/gefaald + aantallen) — die
+   komt in de PR:
    ```bash
    npm test 2>&1 | tee /tmp/itworxs-tests.txt
    ```
-   Laat een itworxs-reviewer agent daarna een korte self-review doen.
+   Faalt er een test, los die eerst op; ga niet verder met rode tests. Laat een
+   itworxs-reviewer agent daarna een korte self-review doen.
 4. **Taken afvinken in het fase-issue** — Haal de body op, zet de afgewerkte taken op
    `- [x]`, schrijf terug:
    ```bash
