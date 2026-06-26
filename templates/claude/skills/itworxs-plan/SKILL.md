@@ -9,6 +9,9 @@ Zet een feature om in een gefaseerd plan en GitHub issues. Vereist de GitHub CLI
 (`gh`), ingelogd via `gh auth login`. Is `gh` er niet of niet ingelogd, stop dan en
 vraag de gebruiker dat eerst te regelen.
 
+> **Deze skill schrijft geen code.** Ze levert enkel het plan en de GitHub issues.
+> Bouwen gebeurt pas daarna met de itworxs-ship skill, en pas nadat alle issues bestaan.
+
 ## Stappen
 
 1. **Verfijn de feature** — Stel gerichte vragen tot je een korte, duidelijke spec hebt:

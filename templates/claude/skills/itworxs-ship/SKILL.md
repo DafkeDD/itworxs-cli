@@ -9,6 +9,16 @@ Bouwt het werk **fase per fase** op basis van `.claude/itworxs-plan.json` en de 
 issues. Vereist `gh` (ingelogd). Bestaat het planbestand niet, run dan eerst de
 **itworxs-plan** skill.
 
+## Voorwaarde — controleer dit eerst
+
+Begin pas met bouwen als het plannen volledig klaar is:
+- `.claude/itworxs-plan.json` bestaat,
+- elke fase daarin heeft een `issue`-nummer (alle fase-issues zijn aangemaakt),
+- de epic bestaat.
+
+Klopt een van deze niet, stop dan en run eerst de itworxs-plan skill. Schrijf geen code
+zolang niet alle issues bestaan.
+
 > **Tip voor minimaal klikwerk:** draai Claude Code in auto-accept (acceptEdits) modus.
 > Dan word je niet per tool-call gevraagd; je enige checkpoint is het reviewen en mergen
 > van de PR per fase.
