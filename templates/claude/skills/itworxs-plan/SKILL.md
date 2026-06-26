@@ -29,13 +29,14 @@ vraag de gebruiker dat eerst te regelen.
 ## GitHub issues aanmaken (na akkoord)
 
 Maak **eerst een issue per fase**, noteer hun nummers, en daarna de **epic** die ernaar
-verwijst.
+verwijst. **Eén issue per fase — niet per taak.** De onderverdeling van een fase komt als
+geneste checklist (subtaken) *binnen* dat fase-issue te staan.
 
 1. Per fase:
    ```bash
    gh issue create --title "Fase N: <titel>" \
      --label itworxs-plan \
-     --body "$(printf '## Taken\n- [ ] taak 1\n- [ ] taak 2\n\nDeel van plan: <slug>')"
+     --body "$(printf '## Taken\n- [ ] Taak 1\n  - [ ] subtaak 1a\n  - [ ] subtaak 1b\n- [ ] Taak 2\n\nDeel van plan: <slug>')"
    ```
    Onthoud het issuenummer dat `gh` teruggeeft.
 2. De epic met de fase-checklist die naar de fase-issues verwijst:

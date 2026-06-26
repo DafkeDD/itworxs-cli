@@ -29,8 +29,13 @@ zolang niet alle issues bestaan.
 2. **Implementeren** — Gebruik de itworxs-explorer agent om de fase te situeren, dan de
    itworxs-developer agent om de taken te bouwen volgens de projectpatronen, en de
    itworxs-tester agent voor happy- én failure-path tests.
-3. **Kwaliteit** — Draai de itworxs-quality skill en los blokkers op. Laat een
-   itworxs-reviewer agent een korte self-review doen.
+3. **Kwaliteit & tests** — Draai de itworxs-quality skill (lint, types, **tests**, build)
+   en los blokkers op. **Bewaar de uitvoer van de testrun** (geslaagd/gefaald + aantallen),
+   die komt in de PR:
+   ```bash
+   npm test 2>&1 | tee /tmp/itworxs-tests.txt
+   ```
+   Laat een itworxs-reviewer agent daarna een korte self-review doen.
 4. **Taken afvinken in het fase-issue** — Haal de body op, zet de afgewerkte taken op
    `- [x]`, schrijf terug:
    ```bash
@@ -39,11 +44,14 @@ zolang niet alle issues bestaan.
    gh issue edit <issue> --body-file /tmp/body.md
    ```
 5. **Commit & PR** — Conventional commit, push de branch, en open een PR die het
-   fase-issue sluit bij merge:
+   fase-issue sluit bij merge. **Zet de testuitslag in de PR-body** (samenvatting van
+   `/tmp/itworxs-tests.txt`: aantal geslaagd/gefaald, en de relevante regels):
    ```bash
+   TESTS=$(tail -n 20 /tmp/itworxs-tests.txt)
    gh pr create --title "feat: fase <n> - <titel>" \
-     --body "$(printf 'Implementeert fase %s.\n\nCloses #%s' "<n>" "<issue>")"
+     --body "$(printf 'Implementeert fase %s.\n\n## Testresultaten\n```\n%s\n```\n\nCloses #%s' "<n>" "$TESTS" "<issue>")"
    ```
+   Zijn er gefaalde tests, los die dan eerst op — open geen PR met rode tests.
 6. **Fase afvinken in de epic** — Zet het vinkje van deze fase aan in de epic-issue,
    met dezelfde body-edit aanpak op het epicnummer.
 7. **Markeer de fase als done** in `.claude/itworxs-plan.json`.
