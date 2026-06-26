@@ -31,11 +31,11 @@ zolang niet alle issues bestaan.
 > onderhandelbaar.
 
 1. **Branch** — `git checkout main && git pull && git checkout -b feat/<slug>-fase-<n>`.
-2. **Implementeren + tests schrijven** — Gebruik de itworxs-explorer agent om de fase te
-   situeren, dan de itworxs-developer agent om de taken te bouwen volgens de
-   projectpatronen. Laat vervolgens de itworxs-tester agent **verplicht** tests schrijven
-   voor alle nieuwe/gewijzigde code — happy- én failure-paths. Code zonder tests telt niet
-   als af.
+2. **Implementeren + tests schrijven** — Lees eerst `.claude/memory/architecture.md` voor
+   context. Zet de itworxs-explorer agent **alleen** in bij een grote of onbekende fase;
+   voor een kleine, duidelijke fase ga je direct met de itworxs-developer agent aan de slag
+   (scheelt tokens). Laat daarna de itworxs-tester agent **verplicht** tests schrijven voor
+   alle nieuwe/gewijzigde code — happy- én failure-paths. Code zonder tests telt niet als af.
 3. **Tests uitvoeren + kwaliteit** — Voer de tests uit en krijg ze **groen** (verplichte
    gate vóór de PR). Draai daarna de itworxs-quality skill (lint, types, build) en los
    blokkers op. **Bewaar de uitvoer van de testrun** (geslaagd/gefaald + aantallen) — die

@@ -26,3 +26,14 @@ playwright-MCP die in dit project geconfigureerd is.
 - Eén gebruikersflow per test, met beschrijvende namen.
 - Gebruik toegankelijke selectors (rollen en labels) in plaats van broze CSS-selectors.
 - Draai met `npx playwright test`; rapporteer faalpunten met een screenshot of trace.
+
+
+## Playwright-MCP (optioneel aanzetten)
+
+De playwright-MCP staat standaard **uit** om tokens te sparen. Heb je hem nodig voor
+browser-automation tijdens e2e-werk, voeg dan tijdelijk dit toe aan `.claude/mcp.json`
+(en haal het weer weg als je klaar bent):
+
+```json
+"playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"], "env": {} }
+```

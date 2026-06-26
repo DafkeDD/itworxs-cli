@@ -534,12 +534,6 @@ function buildMcpJson(withPostgres: boolean, withGithub: boolean): string {
       env: {},
       description: 'Context7 - actuele library-documentatie voor frameworks en SDKs',
     },
-    playwright: {
-      command: 'npx',
-      args: ['-y', '@playwright/mcp@latest'],
-      env: {},
-      description: 'Playwright - browser-automation voor het testen en debuggen van web-UIs',
-    },
     gitnexus: {
       command: 'npx',
       args: ['-y', 'gitnexus-mcp@latest'],

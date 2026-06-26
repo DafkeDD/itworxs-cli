@@ -156,6 +156,18 @@ bijwerken — geen automatisch logboek. Drie bestanden:
 Bij `itworxs update` worden deze bestanden **nooit overschreven** (seed-once): je
 gecureerde inhoud blijft staan, net als je `HANDOFF.md`.
 
+#### Token-zuinig
+
+Het sjabloon is afgesteld op laag tokenverbruik:
+
+- **MCP**: standaard alleen `context7` + `gitnexus` (+ `postgres`/`github` indien gekozen).
+  De zwaardere `playwright`-MCP staat uit en zet je opt-in aan voor e2e (zie itworxs-e2e).
+- **Modelkeuze**: lichte agents (explorer, tester, reviewer, db-expert, gdpr) draaien op
+  Haiku; zwaar denkwerk (developer, architect, designer) op het standaardmodel.
+- **Minder agent-hops**: de explorer wordt alleen ingezet bij grote/onbekende fases; voor
+  kleine fases gaat de developer er direct op, leunend op `memory/architecture.md`.
+- **Gericht lezen**: agents gebruiken grep en lezen alleen relevante regels, geen mappen.
+
 ### Bestaand project bijwerken
 
 Draai in de root van een bestaand project:

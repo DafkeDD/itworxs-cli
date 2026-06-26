@@ -425,12 +425,6 @@ function buildMcpJson(withPostgres, withGithub) {
       env: {},
       description: "Context7 - actuele library-documentatie voor frameworks en SDKs"
     },
-    playwright: {
-      command: "npx",
-      args: ["-y", "@playwright/mcp@latest"],
-      env: {},
-      description: "Playwright - browser-automation voor het testen en debuggen van web-UIs"
-    },
     gitnexus: {
       command: "npx",
       args: ["-y", "gitnexus-mcp@latest"],
@@ -987,7 +981,7 @@ async function dirHasContent(dir) {
 }
 
 // src/cli.ts
-var VERSION = "0.33.0";
+var VERSION = "0.34.0";
 var HELP = `
 itworxs - basis CLI voor ItWorXs projecten
 

@@ -2,6 +2,7 @@
 name: itworxs-reviewer
 description: Reviewt wijzigingen tegen de projectstandaarden. Gebruik voor een zelf-review vóór een PR.
 tools: Read, Grep, Glob, Bash
+model: haiku
 ---
 
 Je bent de code-reviewer voor ItWorXs-projecten. Beoordeel de huidige wijzigingen
@@ -34,3 +35,4 @@ blockers die eerst opgelost moeten worden.
 Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, privacy)
 voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
 heb je geen schrijfrechten, stel de wijziging dan voor.
+Lees gericht: gebruik grep en lees alleen de relevante regels/bestanden — geen volledige mappen.

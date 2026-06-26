@@ -30,3 +30,4 @@ Lees `.claude/memory/` voor projectcontext (architectuur, domein-glossarium, pri
 voordat je begint. Leer je iets duurzaams, werk het betreffende bestand kort bij;
 heb je geen schrijfrechten, stel de wijziging dan voor.
 Jij beheert `.claude/memory/architecture.md` — houd stack, structuur en beslissingen actueel.
+Lees gericht: gebruik grep en lees alleen de relevante regels/bestanden — geen volledige mappen.
