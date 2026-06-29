@@ -16,8 +16,11 @@ Commands:
 
 Opties bij init:
   --frontend <naam>   Sla de frontend-vraag over (bv. nextjs, none)
-  --backend <naam>    Sla de backend-vraag over (bv. node-express, none)
+  --backend <naam>    Sla de backend-vraag over (bv. node-express, nestjs, none)
   --database <naam>   Sla de database-vraag over (bv. postgresql, none)
+  --oidc <ja|nee>     Pasport OIDC-server in oidc/ toevoegen (yes, no)
+  --docker <ja|nee>   docker-compose.yml + Dockerfile per service genereren (yes, no)
+  --docker-seed <ja|nee> Demo-data meeseeden in de compose, enkel met --docker (yes, no)
   --repo <naam>       Repo-host (bv. github, none)
   --repo-create <ja|nee>   GitHub-repo aanmaken via gh (yes, no)
   --repo-name <naam>       Naam van de repo (standaard: mapnaam)
@@ -65,7 +68,10 @@ async function main(): Promise<void> {
       const repoCreate = getFlagValue(flags, '--repo-create');
       const repoName = getFlagValue(flags, '--repo-name');
       const repoVisibility = getFlagValue(flags, '--repo-visibility');
-      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility });
+      const oidc = getFlagValue(flags, '--oidc');
+      const docker = getFlagValue(flags, '--docker');
+      const dockerSeed = getFlagValue(flags, '--docker-seed');
+      await runInit({ dryRun, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility, oidc, docker, dockerSeed });
       break;
     }
     case 'update':

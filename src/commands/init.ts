@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 
@@ -10,6 +11,7 @@ const INSTALL_DIR_NAME = 'itworxs-cli';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const CLAUDE_TEMPLATES_DIR = path.resolve(moduleDir, '../templates/claude');
+const OIDC_TEMPLATES_DIR = path.resolve(moduleDir, '../templates/oidc');
 
 interface Choice {
   value: string;
@@ -24,6 +26,7 @@ const FRONTENDS: Choice[] = [
 
 const BACKENDS: Choice[] = [
   { value: 'node-express', label: 'Node.js + Express', hint: 'TypeScript, basis API-server' },
+  { value: 'nestjs', label: 'NestJS', hint: 'TypeScript, Pasport-OIDC (JWKS) + RBAC/tenant-guards' },
   { value: 'none', label: 'Geen', hint: 'geen backend' },
 ];
 
@@ -47,6 +50,21 @@ const PGSKILLS_CHOICES: Choice[] = [
   { value: 'yes', label: 'Ja', hint: 'neondatabase/postgres-skills (best practices)' },
 ];
 
+const OIDC_CHOICES: Choice[] = [
+  { value: 'no', label: 'Nee', hint: 'geen eigen auth-server' },
+  { value: 'yes', label: 'Ja', hint: 'Pasport OIDC-server (node-oidc-provider + Express + Postgres)' },
+];
+
+const DOCKER_CHOICES: Choice[] = [
+  { value: 'no', label: 'Nee', hint: 'geen Docker-config' },
+  { value: 'yes', label: 'Ja', hint: 'docker-compose.yml + Dockerfile per service' },
+];
+
+const DOCKER_SEED_CHOICES: Choice[] = [
+  { value: 'yes', label: 'Ja', hint: 'compose draait migrate + seed (demo-tenants en -gebruikers)' },
+  { value: 'no', label: 'Nee', hint: 'compose draait enkel migrate (geen demo-data)' },
+];
+
 const REPO_CREATE_CHOICES: Choice[] = [
   { value: 'no', label: 'Nee', hint: 'alleen CI-config, geen repo aanmaken' },
   { value: 'yes', label: 'Ja', hint: 'maak nu een GitHub-repo aan via de gh CLI' },
@@ -68,6 +86,9 @@ export interface InitOptions {
   repoCreate?: string;
   repoName?: string;
   repoVisibility?: string;
+  oidc?: string;
+  docker?: string;
+  dockerSeed?: string;
 }
 
 function resolveProjectRoot(): string {
@@ -76,7 +97,7 @@ function resolveProjectRoot(): string {
   return cwd;
 }
 
-export async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility }: InitOptions = {}): Promise<void> {
+export async function runInit({ dryRun = false, frontend, backend, database, repo, design, pgSkills, repoCreate, repoName, repoVisibility, oidc, docker, dockerSeed }: InitOptions = {}): Promise<void> {
   const projectRoot = resolveProjectRoot();
 
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' project setup');
@@ -88,13 +109,20 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   if (backendChoice === undefined) return;
 
   let databaseChoice = 'none';
-  if (backendChoice === 'node-express') {
+  if (backendChoice === 'node-express' || backendChoice === 'nestjs') {
     const db = await pick('Welke database wil je gebruiken?', DATABASES, database);
     if (db === undefined) return;
     databaseChoice = db;
   }
 
-  if (frontendChoice === 'none' && backendChoice === 'none') {
+  // OIDC-server (Pasport): losse auth-server, los van de backend-keuze, zodat je
+  // bv. frontend + NestJS-backend + OIDC in één keer kunt scaffolden.
+  const oidcChoice = await pick('Een OIDC-server (Pasport) toevoegen?', OIDC_CHOICES, oidc);
+  if (oidcChoice === undefined) return;
+  // De OIDC-server gebruikt altijd Postgres.
+  const wantsPostgres = databaseChoice === 'postgresql' || oidcChoice === 'yes';
+
+  if (frontendChoice === 'none' && backendChoice === 'none' && oidcChoice !== 'yes') {
     p.outro(chalk.dim('Niets geselecteerd - niets te doen.'));
     return;
   }
@@ -127,10 +155,23 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
   }
 
   let pgSkillsChoice = 'no';
-  if (databaseChoice === 'postgresql') {
+  if (wantsPostgres) {
     const choice = await pick('Postgres best-practices skill toevoegen?', PGSKILLS_CHOICES, pgSkills);
     if (choice === undefined) return;
     pgSkillsChoice = choice;
+  }
+
+  // Alles op Docker? Genereert docker-compose.yml + een Dockerfile per service.
+  const dockerChoice = await pick('Wil je alles op Docker deployen (docker-compose + Dockerfiles)?', DOCKER_CHOICES, docker);
+  if (dockerChoice === undefined) return;
+
+  // Vervolgvragen rond Docker stellen we enkel als je Docker gebruikt.
+  // Demo-data (tenants + gebruikers) meeseeden in de compose? Enkel relevant met OIDC.
+  let dockerSeedChoice = 'no';
+  if (dockerChoice === 'yes' && oidcChoice === 'yes') {
+    const choice = await pick('Demo-data (tenants + gebruikers) meeseeden in de compose?', DOCKER_SEED_CHOICES, dockerSeed);
+    if (choice === undefined) return;
+    dockerSeedChoice = choice;
   }
 
   if (dryRun) {
@@ -141,12 +182,29 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
       const dbLine = databaseChoice === 'postgresql' ? 'PostgreSQL' : 'geen';
       p.note(`map: ${path.join(projectRoot, 'backend')}\nExpress (TypeScript)\nDatabase: ${dbLine}`, 'Backend');
     }
+    if (backendChoice === 'nestjs') {
+      const dbLine = databaseChoice === 'postgresql' ? 'PostgreSQL' : 'geen';
+      p.note(`map: ${path.join(projectRoot, 'backend')}\nNestJS (TypeScript) · Pasport-OIDC (JWKS) + RBAC/tenant-guards\nDatabase: ${dbLine}`, 'Backend');
+    }
+    if (oidcChoice === 'yes') {
+      p.note(`map: ${path.join(projectRoot, 'oidc')}\nPasport OIDC-server (node-oidc-provider + Express)\nEigen login/registratie · multi-tenant RBAC-claims · verse JWKS\nDatabase: PostgreSQL`, 'OIDC-server');
+    }
     if (repoChoice === 'github') {
       const repoLine =
         repoCreateChoice === 'yes'
           ? `\nGitHub-repo aanmaken: ${repoNameChoice} (${repoVisibilityChoice})`
           : '';
       p.note(`GitHub Actions CI -> .github/workflows/ci.yml${repoLine}`, 'Repository');
+    }
+    if (dockerChoice === 'yes') {
+      const svc = [
+        wantsPostgres ? 'postgres' : '',
+        oidcChoice === 'yes' ? 'oidc' : '',
+        backendChoice !== 'none' ? 'backend' : '',
+        frontendChoice === 'nextjs' ? 'frontend' : '',
+      ].filter(Boolean);
+      const seedLine = oidcChoice === 'yes' ? `\nDemo-data seeden: ${dockerSeedChoice === 'yes' ? 'ja' : 'nee'}` : '';
+      p.note(`docker-compose.yml + Dockerfile per service\nServices: ${svc.join(', ')}${seedLine}`, 'Docker');
     }
     p.note('.claude/ met MCP-config, quality-skill en reviewer-agent', 'Claude-tooling');
     if (uiuxChoice === 'yes') {
@@ -170,8 +228,23 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
       ? done.push('backend/ (Express + TypeScript + Prettier)')
       : (failed = true);
   }
+  if (!failed && backendChoice === 'nestjs') {
+    (await setupNestjs(projectRoot, databaseChoice))
+      ? done.push('backend/ (NestJS + Pasport-OIDC + RBAC)')
+      : (failed = true);
+  }
+  if (!failed && oidcChoice === 'yes') {
+    (await setupOidc(projectRoot))
+      ? done.push('oidc/ (Pasport OIDC-server + verse JWKS)')
+      : (failed = true);
+  }
   if (!failed && repoChoice === 'github') {
-    await setupGitHub(projectRoot, frontendChoice === 'nextjs', backendChoice === 'node-express');
+    const backends: BackendJob[] = [];
+    if (backendChoice === 'node-express' || backendChoice === 'nestjs') {
+      backends.push({ dir: 'backend', build: 'npm run build' });
+    }
+    if (oidcChoice === 'yes') backends.push({ dir: 'oidc', build: 'npm run typecheck' });
+    await setupGitHub(projectRoot, frontendChoice === 'nextjs', backends);
     done.push('.github/workflows/ci.yml');
   }
 
@@ -181,8 +254,20 @@ export async function runInit({ dryRun = false, frontend, backend, database, rep
     }
   }
 
+  if (!failed && dockerChoice === 'yes') {
+    await setupDocker(projectRoot, {
+      frontend: frontendChoice === 'nextjs',
+      backend: backendChoice === 'nestjs' ? 'nestjs' : backendChoice === 'node-express' ? 'node-express' : null,
+      backendUsesPg: databaseChoice === 'postgresql',
+      oidc: oidcChoice === 'yes',
+      postgres: wantsPostgres,
+      seed: dockerSeedChoice === 'yes',
+    });
+    done.push('docker-compose.yml + Dockerfiles');
+  }
+
   if (!failed) {
-    await setupClaude(projectRoot, databaseChoice === 'postgresql', repoChoice === 'github');
+    await setupClaude(projectRoot, wantsPostgres, repoChoice === 'github');
     done.push('.claude/ (MCP + quality-skill + reviewer-agent)');
   }
 
@@ -210,7 +295,9 @@ export async function runUpdate(): Promise<void> {
   const projectRoot = resolveProjectRoot();
   p.intro(chalk.bgCyan(chalk.black(' itworxs ')) + ' tooling update');
 
-  const withPostgres = existsSync(path.join(projectRoot, 'backend', 'src', 'config', 'db.ts'));
+  const withPostgres =
+    existsSync(path.join(projectRoot, 'backend', 'src', 'config', 'db.ts')) ||
+    existsSync(path.join(projectRoot, 'oidc', 'src', 'db.ts'));
   const withGithub = existsSync(path.join(projectRoot, '.github', 'workflows', 'ci.yml'));
 
   await setupClaude(projectRoot, withPostgres, withGithub);
@@ -385,6 +472,276 @@ async function setupNodeExpress(projectRoot: string, database: string): Promise<
   return (await runInShell('npm install -D ' + dev.join(' ') + ' --no-audit --no-fund', dir)) === 0;
 }
 
+/**
+ * NestJS-backend (TypeScript) opzetten in backend/.
+ * Pasport-ready: tokenverificatie via JWKS (deny-by-default) + RBAC/tenant-guards,
+ * een publieke /health en een beschermde /me. Postgres-pool enkel bij PostgreSQL.
+ */
+async function setupNestjs(projectRoot: string, database: string): Promise<boolean> {
+  const dir = path.join(projectRoot, 'backend');
+  if (await dirHasContent(dir)) {
+    p.log.error(`Map 'backend' bestaat al en is niet leeg: ${dir}`);
+    return false;
+  }
+  const usePg = database === 'postgresql';
+  p.log.step('NestJS (TypeScript) opzetten in backend/ — Pasport-OIDC + RBAC ...');
+
+  await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+  for (const sub of ['config', 'auth', 'health', 'me']) {
+    await fs.mkdir(path.join(dir, 'src', sub), { recursive: true });
+  }
+
+  const pkg = {
+    name: 'backend',
+    version: '1.0.0',
+    scripts: {
+      dev: 'nest start --watch',
+      build: 'nest build',
+      start: 'node dist/main.js',
+      'start:prod': 'node dist/main.js',
+      format: 'prettier --write "src/**/*.ts"',
+    },
+  };
+  await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  await fs.writeFile(path.join(dir, 'nest-cli.json'), NEST_CLI_JSON);
+  await fs.writeFile(path.join(dir, 'tsconfig.json'), NEST_TSCONFIG);
+  await fs.writeFile(path.join(dir, 'tsconfig.build.json'), NEST_TSCONFIG_BUILD);
+  await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\ndist/\n.env\n');
+  await fs.writeFile(path.join(dir, '.env.example'), buildNestEnvExample(usePg));
+
+  await fs.writeFile(path.join(dir, 'src', 'main.ts'), NEST_MAIN);
+  await fs.writeFile(path.join(dir, 'src', 'app.module.ts'), NEST_APP_MODULE);
+  await fs.writeFile(path.join(dir, 'src', 'config', 'env.ts'), buildNestEnv(usePg));
+  await fs.writeFile(path.join(dir, 'src', 'auth', 'jwt.strategy.ts'), NEST_JWT_STRATEGY);
+  await fs.writeFile(path.join(dir, 'src', 'auth', 'jwt-auth.guard.ts'), NEST_JWT_GUARD);
+  await fs.writeFile(path.join(dir, 'src', 'auth', 'roles.guard.ts'), NEST_ROLES_GUARD);
+  await fs.writeFile(path.join(dir, 'src', 'auth', 'roles.decorator.ts'), NEST_ROLES_DECORATOR);
+  await fs.writeFile(path.join(dir, 'src', 'auth', 'public.decorator.ts'), NEST_PUBLIC_DECORATOR);
+  await fs.writeFile(
+    path.join(dir, 'src', 'auth', 'current-user.decorator.ts'),
+    NEST_CURRENT_USER_DECORATOR,
+  );
+  await fs.writeFile(
+    path.join(dir, 'src', 'health', 'health.controller.ts'),
+    buildNestHealthController(usePg),
+  );
+  await fs.writeFile(path.join(dir, 'src', 'me', 'me.controller.ts'), NEST_ME_CONTROLLER);
+  if (usePg) {
+    await fs.writeFile(path.join(dir, 'src', 'config', 'db.ts'), NEST_DB_TS);
+  }
+
+  const runtime = [
+    '@nestjs/common',
+    '@nestjs/core',
+    '@nestjs/platform-express',
+    '@nestjs/passport',
+    'passport',
+    'passport-jwt',
+    'jwks-rsa',
+    'reflect-metadata',
+    'rxjs',
+    'helmet',
+    'dotenv',
+  ];
+  if (usePg) runtime.push('pg');
+  const dev = ['@nestjs/cli', 'typescript', 'prettier', '@types/node', '@types/passport-jwt'];
+  if (usePg) dev.push('@types/pg');
+
+  if ((await runInShell('npm install ' + runtime.join(' ') + ' --no-audit --no-fund', dir)) !== 0) {
+    return false;
+  }
+  return (await runInShell('npm install -D ' + dev.join(' ') + ' --no-audit --no-fund', dir)) === 0;
+}
+
+/**
+ * Pasport OIDC-server (TypeScript) opzetten in oidc/.
+ * Kopieert de kant-en-klare node-oidc-provider service (Express + Postgres-adapter,
+ * eigen login/registratie, multi-tenant RBAC-claims) en genereert een VERSE JWKS
+ * zodat elke installatie eigen signing keys heeft.
+ */
+async function setupOidc(projectRoot: string): Promise<boolean> {
+  const dir = path.join(projectRoot, 'oidc');
+  if (await dirHasContent(dir)) {
+    p.log.error(`Map 'oidc' bestaat al en is niet leeg: ${dir}`);
+    return false;
+  }
+  p.log.step('Pasport OIDC-server opzetten in oidc/ ...');
+
+  await fs.cp(OIDC_TEMPLATES_DIR, dir, { recursive: true });
+  // .gitignore inline (niet als template-bestand, om npm-publish-eigenaardigheden te vermijden).
+  await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\ndist/\n.env\njwks.json\n');
+  // Verse RSA-sleutel per installatie; jwks.json is geheim en staat in .gitignore.
+  await fs.writeFile(path.join(dir, 'jwks.json'), JSON.stringify(generateJwks(), null, 2) + '\n');
+
+  return (await runInShell('npm install --no-audit --no-fund', dir)) === 0;
+}
+
+/** Genereert een verse RSA-JWKS (RS256) voor de OIDC-server. */
+function generateJwks(): { keys: Record<string, unknown>[] } {
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = privateKey.export({ format: 'jwk' }) as unknown as Record<string, unknown>;
+  jwk.use = 'sig';
+  jwk.alg = 'RS256';
+  jwk.kid = randomUUID();
+  return { keys: [jwk] };
+}
+
+interface DockerOpts {
+  frontend: boolean;
+  backend: 'node-express' | 'nestjs' | null;
+  backendUsesPg: boolean;
+  oidc: boolean;
+  postgres: boolean;
+  seed: boolean;
+}
+
+/**
+ * Docker-deploy opzetten: één docker-compose.yml in de root + een Dockerfile
+ * (+ .dockerignore) per gekozen service. Dev-gerichte defaults; één commando:
+ * `docker compose up --build`.
+ */
+async function setupDocker(projectRoot: string, opts: DockerOpts): Promise<boolean> {
+  p.log.step('Docker-config toevoegen (docker-compose.yml + Dockerfiles) ...');
+
+  await fs.writeFile(path.join(projectRoot, 'docker-compose.yml'), buildCompose(opts));
+
+  if (opts.frontend) {
+    await fs.writeFile(path.join(projectRoot, 'frontend', 'Dockerfile'), DOCKERFILE_FRONTEND);
+    await fs.writeFile(path.join(projectRoot, 'frontend', '.dockerignore'), 'node_modules\n.next\n.git\n.env*\nnpm-debug.log\n');
+  }
+  if (opts.backend) {
+    const port = opts.backend === 'nestjs' ? 4000 : 5000;
+    const entry = opts.backend === 'nestjs' ? 'dist/main.js' : 'dist/index.js';
+    await fs.writeFile(path.join(projectRoot, 'backend', 'Dockerfile'), buildNodeDockerfile(port, ['node', entry]));
+    await fs.writeFile(path.join(projectRoot, 'backend', '.dockerignore'), 'node_modules\ndist\n.git\n.env\nnpm-debug.log\n');
+  }
+  if (opts.oidc) {
+    // De OIDC-server draait via tsx (geen build-stap); jwks.json moet mee in de image.
+    await fs.writeFile(path.join(projectRoot, 'oidc', 'Dockerfile'), buildNodeDockerfile(9000, ['npm', 'start']));
+    await fs.writeFile(path.join(projectRoot, 'oidc', '.dockerignore'), 'node_modules\ndist\n.git\n.env\nnpm-debug.log\n');
+  }
+  return true;
+}
+
+/** Node-image met npm ci + build; CMD via JSON-array. */
+function buildNodeDockerfile(port: number, cmd: string[]): string {
+  const hasBuild = cmd[0] === 'node'; // gecompileerde services bouwen; tsx-services niet
+  const buildLine = hasBuild ? 'RUN npm run build\n' : '';
+  const cmdJson = '[' + cmd.map((c) => `"${c}"`).join(', ') + ']';
+  return `FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+${buildLine}EXPOSE ${port}
+CMD ${cmdJson}
+`;
+}
+
+const DOCKERFILE_FRONTEND = `FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+`;
+
+/** Bouwt de docker-compose.yml op basis van de gekozen services. */
+function buildCompose(opts: DockerOpts): string {
+  const blocks: string[] = [];
+
+  if (opts.postgres) {
+    blocks.push(`  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pasport
+      POSTGRES_PASSWORD: pasport_dev
+      POSTGRES_DB: pasport
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pasport -d pasport"]
+      interval: 5s
+      timeout: 5s
+      retries: 10`);
+  }
+
+  if (opts.oidc) {
+    const oidcCmd = opts.seed
+      ? 'sh -c "npm run migrate && npm run seed && npm start"'
+      : 'sh -c "npm run migrate && npm start"';
+    blocks.push(`  oidc:
+    build: ./oidc
+    command: ${oidcCmd}
+    environment:
+      ISSUER: http://localhost:9000
+      PORT: "9000"
+      DATABASE_URL: postgresql://pasport:pasport_dev@postgres:5432/pasport
+      COOKIE_SECRET: verander-mij-naar-iets-langs-en-willekeurigs
+    ports:
+      - "9000:9000"
+    depends_on:
+      postgres:
+        condition: service_healthy`);
+  }
+
+  if (opts.backend) {
+    const isNest = opts.backend === 'nestjs';
+    const port = isNest ? 4000 : 5000;
+    const env = isNest
+      ? `      NODE_ENV: production
+      PORT: "4000"
+      WEB_ORIGIN: http://localhost:3000
+      OIDC_ISSUER_URL: http://localhost:9000
+      OIDC_JWKS_URI: http://oidc:9000/jwks
+      OIDC_AUDIENCE: pasport-api`
+      : `      NODE_ENV: production
+      PORT: "5000"
+      FRONTEND_URL: http://localhost:3000`;
+    const dbEnv = opts.backendUsesPg
+      ? `
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: pasport
+      DB_PASSWORD: pasport_dev
+      DB_DATABASE: pasport`
+      : '';
+    const deps: string[] = [];
+    if (opts.postgres) deps.push(`      postgres:
+        condition: service_healthy`);
+    if (opts.oidc) deps.push(`      oidc:
+        condition: service_started`);
+    const dependsOn = deps.length ? `\n    depends_on:\n${deps.join('\n')}` : '';
+    blocks.push(`  backend:
+    build: ./backend
+    environment:
+${env}${dbEnv}
+    ports:
+      - "${port}:${port}"${dependsOn}`);
+  }
+
+  if (opts.frontend) {
+    const dependsOn = opts.backend
+      ? `
+    depends_on:
+      - backend`
+      : '';
+    blocks.push(`  frontend:
+    build: ./frontend
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"${dependsOn}`);
+  }
+
+  const volumes = opts.postgres ? `\nvolumes:\n  pgdata:\n` : '\n';
+  return `services:\n${blocks.join('\n')}\n${volumes}`;
+}
+
 /** Bouwt config/env.ts; voegt DB-velden enkel toe bij PostgreSQL. */
 function buildEnvTs(usePg: boolean): string {
   const dbFields = usePg
@@ -466,16 +823,22 @@ app.listen(env.PORT, () => {
 `;
 }
 
+/** Eén backend-/service-job in de CI: map + build-commando. */
+interface BackendJob {
+  dir: string;
+  build: string;
+}
+
 /** GitHub Actions CI toevoegen in .github/workflows/ci.yml. */
 async function setupGitHub(
   projectRoot: string,
   hasFrontend: boolean,
-  hasBackend: boolean,
+  backends: BackendJob[],
 ): Promise<void> {
   p.log.step('GitHub Actions CI toevoegen (.github/workflows/ci.yml) ...');
   const dir = path.join(projectRoot, '.github', 'workflows');
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, 'ci.yml'), buildCiYaml(hasFrontend, hasBackend));
+  await fs.writeFile(path.join(dir, 'ci.yml'), buildCiYaml(hasFrontend, backends));
 }
 
 /** Maakt een GitHub-repository aan via de gh CLI en zet 'origin'. Niet-fataal bij een fout. */
@@ -584,8 +947,8 @@ async function setupPostgresSkills(projectRoot: string): Promise<void> {
   }
 }
 
-function buildCiYaml(hasFrontend: boolean, hasBackend: boolean): string {
-  const job = (name: string, dir: string): string => `  ${name}:
+function buildCiYaml(hasFrontend: boolean, backends: BackendJob[]): string {
+  const job = (name: string, dir: string, buildCmd: string): string => `  ${name}:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -596,12 +959,12 @@ function buildCiYaml(hasFrontend: boolean, hasBackend: boolean): string {
         with:
           node-version: '20'
       - run: npm install
-      - run: npm run build
+      - run: ${buildCmd}
 `;
 
   const jobs: string[] = [];
-  if (hasFrontend) jobs.push(job('frontend', 'frontend'));
-  if (hasBackend) jobs.push(job('backend', 'backend'));
+  if (hasFrontend) jobs.push(job('frontend', 'frontend', 'npm run build'));
+  for (const b of backends) jobs.push(job(b.dir, b.dir, b.build));
   const jobsBlock =
     jobs.length > 0
       ? jobs.join('')
@@ -756,6 +1119,346 @@ OAUTH_AZURE_TENANT=organizations
 OAUTH_GITHUB_CLIENT_ID=
 OAUTH_GITHUB_CLIENT_SECRET=
 `;
+
+// --- templates: NestJS (Pasport-ready) ------------------------------------
+
+const NEST_CLI_JSON = `{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true
+  }
+}
+`;
+
+const NEST_TSCONFIG = `{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+`;
+
+const NEST_TSCONFIG_BUILD = `{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+}
+`;
+
+const NEST_MAIN = `import 'reflect-metadata'
+import helmet from 'helmet'
+import { NestFactory } from '@nestjs/core'
+import { AppModule } from './app.module'
+import { env } from './config/env'
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  })
+  app.use(helmet())
+  app.setGlobalPrefix('api')
+  app.enableCors({ origin: env.WEB_ORIGIN, credentials: true })
+  await app.listen(env.PORT)
+  console.log('Backend draait op http://localhost:' + env.PORT + '/api')
+}
+
+bootstrap()
+`;
+
+// Globale guards: eerst auth (deny-by-default), dan rollen. PassportModule levert de jwt-strategy.
+const NEST_APP_MODULE = `import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
+import { PassportModule } from '@nestjs/passport'
+import { JwtStrategy } from './auth/jwt.strategy'
+import { JwtAuthGuard } from './auth/jwt-auth.guard'
+import { RolesGuard } from './auth/roles.guard'
+import { HealthController } from './health/health.controller'
+import { MeController } from './me/me.controller'
+
+@Module({
+  imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
+  controllers: [HealthController, MeController],
+  providers: [
+    JwtStrategy,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
+})
+export class AppModule {}
+`;
+
+// Verifieert Pasport-tokens via JWKS (RS256). Mapt claims naar een CurrentUser.
+const NEST_JWT_STRATEGY = `import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { PassportStrategy } from '@nestjs/passport'
+import { ExtractJwt, Strategy, type StrategyOptions } from 'passport-jwt'
+import { passportJwtSecret } from 'jwks-rsa'
+import { env } from '../config/env'
+
+export interface CurrentUser {
+  sub: string
+  email?: string
+  roles: string[]
+  tenantId: string | null
+}
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor() {
+    const options: StrategyOptions = {
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKeyProvider: passportJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 10,
+        jwksUri: env.OIDC_JWKS_URI,
+      }),
+      issuer: env.OIDC_ISSUER_URL,
+      algorithms: ['RS256'],
+    }
+    if (env.OIDC_AUDIENCE) options.audience = env.OIDC_AUDIENCE
+    super(options)
+  }
+
+  validate(payload: Record<string, unknown>): CurrentUser {
+    if (!payload || !payload.sub) throw new UnauthorizedException()
+    return {
+      sub: String(payload.sub),
+      email: payload.email as string | undefined,
+      roles: (payload.roles as string[]) ?? [],
+      tenantId: (payload.tenant_id as string) ?? null,
+    }
+  }
+}
+`;
+
+// Deny-by-default: elke route vereist een geldig token, tenzij @Public().
+const NEST_JWT_GUARD = `import { ExecutionContext, Injectable } from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
+import { AuthGuard } from '@nestjs/passport'
+import { IS_PUBLIC_KEY } from './public.decorator'
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  constructor(private readonly reflector: Reflector) {
+    super()
+  }
+
+  canActivate(context: ExecutionContext) {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ])
+    if (isPublic) return true
+    return super.canActivate(context)
+  }
+}
+`;
+
+const NEST_ROLES_GUARD = `import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
+import { ROLES_KEY } from './roles.decorator'
+import type { CurrentUser } from './jwt.strategy'
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const required = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ])
+    if (!required || required.length === 0) return true
+    const user = context.switchToHttp().getRequest().user as CurrentUser | undefined
+    if (!user) throw new ForbiddenException()
+    const ok = user.roles.some((r) => required.includes(r))
+    if (!ok) throw new ForbiddenException('Onvoldoende rechten')
+    return true
+  }
+}
+`;
+
+const NEST_ROLES_DECORATOR = `import { SetMetadata } from '@nestjs/common'
+
+export const ROLES_KEY = 'roles'
+
+// Beperk een route tot rollen, bv. @Roles('admin', 'superadmin').
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles)
+`;
+
+const NEST_PUBLIC_DECORATOR = `import { SetMetadata } from '@nestjs/common'
+
+export const IS_PUBLIC_KEY = 'isPublic'
+
+// Markeer een route als publiek (geen token vereist).
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true)
+`;
+
+const NEST_CURRENT_USER_DECORATOR = `import { createParamDecorator, ExecutionContext } from '@nestjs/common'
+import type { CurrentUser as CurrentUserType } from './jwt.strategy'
+
+// Haalt de ingelogde gebruiker uit de request, bv. me(@CurrentUser() user).
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): CurrentUserType =>
+    ctx.switchToHttp().getRequest().user,
+)
+`;
+
+const NEST_ME_CONTROLLER = `import { Controller, Get } from '@nestjs/common'
+import { CurrentUser } from '../auth/current-user.decorator'
+import type { CurrentUser as CurrentUserType } from '../auth/jwt.strategy'
+
+@Controller('me')
+export class MeController {
+  @Get()
+  me(@CurrentUser() user: CurrentUserType) {
+    return user
+  }
+}
+`;
+
+const NEST_DB_TS = `import 'dotenv/config'
+import pkg from 'pg'
+import { env } from './env'
+
+const { Pool } = pkg
+
+export const pool = new Pool({
+  host: env.DB_HOST,
+  user: env.DB_USER,
+  password: env.DB_PASSWORD,
+  database: env.DB_DATABASE,
+  port: env.DB_PORT,
+})
+
+pool.on('error', (err: Error) => {
+  console.error('Onverwachte fout op idle pg client', err)
+})
+`;
+
+/** Bouwt src/config/env.ts voor NestJS; voegt DB-velden enkel toe bij PostgreSQL. */
+function buildNestEnv(usePg: boolean): string {
+  const dbFields = usePg
+    ? `,
+  DB_HOST: required('DB_HOST', 'localhost'),
+  DB_USER: required('DB_USER', 'postgres'),
+  DB_PASSWORD: required('DB_PASSWORD', 'password'),
+  DB_DATABASE: required('DB_DATABASE', 'projectx'),
+  DB_PORT: Number(get('DB_PORT') ?? 5432)`
+    : '';
+  return `import 'dotenv/config'
+
+// Lege strings (bv. OIDC_AUDIENCE= in .env) gelden als 'niet ingesteld'.
+function get(name: string): string | undefined {
+  const value = process.env[name]
+  return value === undefined || value === '' ? undefined : value
+}
+
+function required(name: string, fallback?: string): string {
+  const value = get(name) ?? fallback
+  if (value === undefined) {
+    throw new Error('Ontbrekende environment variabele: ' + name)
+  }
+  return value
+}
+
+export const env = {
+  NODE_ENV: get('NODE_ENV') ?? 'development',
+  PORT: Number(get('PORT') ?? 4000),
+  WEB_ORIGIN: get('WEB_ORIGIN') ?? 'http://localhost:3000',
+  // Pasport-OIDC: issuer + JWKS voor tokenverificatie, audience = deze API.
+  OIDC_ISSUER_URL: required('OIDC_ISSUER_URL', 'http://localhost:9000'),
+  OIDC_JWKS_URI: required('OIDC_JWKS_URI', 'http://localhost:9000/jwks'),
+  OIDC_AUDIENCE: get('OIDC_AUDIENCE') ?? ''${dbFields}
+}
+`;
+}
+
+/** Bouwt de /health-controller; doet een DB-ping enkel bij PostgreSQL. */
+function buildNestHealthController(usePg: boolean): string {
+  if (usePg) {
+    return `import { Controller, Get } from '@nestjs/common'
+import { Public } from '../auth/public.decorator'
+import { pool } from '../config/db'
+
+@Controller('health')
+export class HealthController {
+  @Public()
+  @Get()
+  async check() {
+    try {
+      await pool.query('SELECT 1')
+      return { status: 'ok', db: 'up' }
+    } catch {
+      return { status: 'error', db: 'down' }
+    }
+  }
+}
+`;
+  }
+  return `import { Controller, Get } from '@nestjs/common'
+import { Public } from '../auth/public.decorator'
+
+@Controller('health')
+export class HealthController {
+  @Public()
+  @Get()
+  check() {
+    return { status: 'ok' }
+  }
+}
+`;
+}
+
+/** Bouwt backend/.env.example voor NestJS; DB-blok enkel bij PostgreSQL. */
+function buildNestEnvExample(usePg: boolean): string {
+  const dbBlock = usePg
+    ? `
+# PostgreSQL
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=password
+DB_DATABASE=projectx
+`
+    : '';
+  return `# NODE_ENV - development | production | test (default: development)
+NODE_ENV=development
+
+# Port + frontend-origin (CORS)
+PORT=4000
+WEB_ORIGIN=http://localhost:3000
+
+# Pasport OIDC - tokenverificatie via JWKS
+OIDC_ISSUER_URL=http://localhost:9000
+OIDC_JWKS_URI=http://localhost:9000/jwks
+OIDC_AUDIENCE=pasport-api
+${dbBlock}`;
+}
 
 // --- templates: next-intl -------------------------------------------------
 
